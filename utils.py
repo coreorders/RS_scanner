@@ -131,6 +131,70 @@ def get_market_cap_and_rs(ticker_info_list, batch_size=20):
         # 딜레이 (옵션)
         time.sleep(1)
     
+    # --- Retry Logic (재시도) ---
+    # 1. 실패하거나 RS가 NaN인 티커 식별
+    # results에는 {Ticker, RS, ...} 딕셔너리가 들어있음.
+    processed_tickers = set()
+    for r in results:
+        if r and 'Ticker' in r:
+            rs_val = r.get('RS')
+            # RS가 유효한 숫자이고 NaN이 아닌지 확인
+            # json dump시 NaN은 'NaN' 등이 될 수 있음, 여기서는 float nan 체크
+            is_valid = False
+            if rs_val is not None:
+                try:
+                    # 문자열 'nan' 체크 및 float nan 체크
+                    if str(rs_val).lower() != 'nan' and rs_val != 0: 
+                        # 0도 재시도 대상에 포함할지? 사용자는 "nan 뜬거만"이라고 했지만
+                        # 데이터 부족으로 0인 경우도 있을 수 있음. 
+                        # 하지만 0은 데이터 부족(계산불가)이므로 재시도해도 똑같을 확률 높음.
+                        # NaN(JSON 에러 유발자)만 타겟팅.
+                         processed_tickers.add(r['Ticker'])
+                    elif rs_val == 0:
+                        # 0인 경우(데이터 부족)는 '처리됨'으로 간주할지?
+                        # 사용자는 "nan 뜬거만"이라고 했음. 0은 정상 결과(데이터 부족)일 수 있음.
+                        # 따라서 0은 성공으로 간주. NaN만 실패로 간주.
+                        processed_tickers.add(r['Ticker'])
+                except:
+                    pass
+
+    all_tickers = {item['Ticker'] for item in ticker_info_list}
+    failed_tickers = list(all_tickers - processed_tickers)
+    
+    if failed_tickers:
+        print(f"\n[Retry] RS 수집 실패/NaN {len(failed_tickers)}개 발견. 배치 재시도 중...")
+        
+        # 재시도도 배치로 처리
+        retry_batch_size = 20
+        for i in range(0, len(failed_tickers), retry_batch_size):
+            batch = failed_tickers[i:i+retry_batch_size]
+            print(f" -> Retry batch {batch}")
+            
+            try:
+                # 배치 다운로드
+                data = yf.download(batch, period="6mo", progress=False, group_by='ticker')
+                
+                # 병렬 처리 (메인 로직 재사용)
+                with ThreadPoolExecutor(max_workers=5) as executor:
+                    future_to_ticker = {executor.submit(process_single_ticker, t, data, qqq_data): t for t in batch}
+                    
+                    for future in future_to_ticker:
+                        res = future.result()
+                        if res:
+                            rs_res = res.get('RS')
+                            if rs_res is not None and str(rs_res).lower() != 'nan':
+                                # 성공 시 기존 결과 제거 후 추가
+                                results = [r for r in results if r['Ticker'] != res['Ticker']]
+                                results.append(res)
+                                print(f"    -> {res['Ticker']} 복구 성공 (RS: {res['RS']})")
+                            else:
+                                print(f"    -> {res['Ticker']} 복구 실패")
+                                
+            except Exception as e:
+                print(f"Retry Batch 에러: {e}")
+            
+            time.sleep(1) # 배치 간 딜레이
+
     # 작업 완료 후 캐시 저장
     save_sector_cache()
     
@@ -187,62 +251,45 @@ def process_single_ticker(ticker, batch_data, qqq_data):
                     rs_val = ((stock_current / stock_60ago) / (qqq_current / qqq_60ago)) - 1
         
         # 메타데이터 (Market Cap, Sector, Industry)
-        # 1. 캐시 확인
-        cached_info = SECTOR_CACHE.get(ticker)
+        t = yf.Ticker(ticker)
         
         market_cap = 0
-        mc_str = "N/A"
         sector = "N/A"
         industry = "N/A"
 
+        # 1. Sector  Industry (캐시 우선)
+        cached_info = SECTOR_CACHE.get(ticker)
         if cached_info:
-            # 캐시 히트: MarketCap은 변동성이 크므로 다시 가져올 수도 있지만, 
-            # 일단 요구사항인 "Sector/Industry"는 확실히 가져옴.
-            # MarketCap은 yf.download 데이터에는 없으므로, 
-            # 여기서 선택: API 호출 줄이려면 이것도 캐시 쓰거나, MarketCap만 따로 호출하거나.
-            # "새로운 정보가 있다면 추가" -> 기존 정보는 재사용 의미 강함.
-            # 하지만 시가총액은 매일 변하므로 갱신이 필요하긴 함.
-            # 일단 Sector/Industry만 캐시에서 쓰고, MarketCap은 Info 호출 시도하되 실패하면 N/A 처리 (또는 캐시된 값 있으면 사용)
-            
             sector = cached_info.get('Sector', 'N/A')
             industry = cached_info.get('Industry', 'N/A')
-            
-            # 시가총액은 캐시에 없을 수도 있고 변동되므로...
-            # 하지만 API 호출을 아예 안 하려면 캐시된 시총이나 N/A 써야 함.
-            # 사용자가 "Sector/Industry"를 강조했으므로, 이 둘이 있으면 API 호출 생략 (IP 차단 방지 최우선)
-            # --> 시총 업데이트 필요 시 별도 로직 필요. 지금은 안전하게 캐시/N/A 사용.
-            pass
-            
         else:
-            # 2. 캐시 미스: API 호출
+            # 캐시 미스: Info 호출 (무거움, 차단 위험 있음)
             try:
-                t = yf.Ticker(ticker)
                 info = t.info
-                
-                market_cap = info.get('marketCap', 0)
                 sector = info.get('sector', 'N/A')
                 industry = info.get('industry', 'N/A')
-                
-                # 포메팅
-                mc_str = f"{market_cap / 1e9:.2f}B" if market_cap else "N/A"
-                
-                # 캐시 업데이트 (메모리)
+                # 캐시 업데이트
                 SECTOR_CACHE[ticker] = {
                     "Sector": sector,
                     "Industry": industry
                 }
-                
             except Exception:
-                # 호출 실패 시 (429 등)
-                market_cap = 0
-                mc_str = "N/A"
-                sector = "N/A"
-                industry = "N/A"
+                pass
+
+        # 2. Market Cap (실시간 우선 - fast_info 사용)
+        # fast_info는 별도의 가벼운 엔드포인트를 쓰므로 차단 위험이 낮고 데이터가 실시간임.
+        try:
+            market_cap = t.fast_info['market_cap']
+        except Exception:
+            # 실패 시 N/A
+            pass
+            
+        mc_str = f"{market_cap / 1e9:.2f}B" if market_cap else "N/A"
 
         return {
             "Ticker": ticker,
             "RS": round(rs_val, 4) if rs_val is not None else 0,
-            "Market Cap": mc_str, # 이 부분은 API 호출 안하면 N/A가 될 수 있음. 시총은 yf.download에서 못가져옴.
+            "Market Cap": mc_str,
             "Price": round(float(hist.iloc[-1]), 2),
             "Sector": sector,
             "Industry": industry
