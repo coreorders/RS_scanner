@@ -197,7 +197,65 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
     <script>
         let globalData = [];
-        // ... (omitted lines) ...
+        let sortDir = { key: 'RS', asc: false };
+
+        // 페이지 로드 시 자동 실행
+        window.onload = function () {
+            const today = new Date();
+            const dateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
+            document.getElementById('page-title').innerText = `${dateStr} US Market RS Score`;
+
+            loadData();
+        };
+
+        async function loadData() {
+            const loader = document.getElementById('loading-msg');
+
+            try {
+                // 정적 JSON 파일 로드
+                const res = await fetch('/data/result.json?t=' + new Date().getTime());
+
+                if (res.status === 404) {
+                    // 404 means file was deleted and bot is working
+                    throw new Error("BOT_WORKING");
+                }
+
+                if (!res.ok) {
+                    throw new Error("데이터 로드 실패 code: " + res.status);
+                }
+
+                const json = await res.json();
+                globalData = json.data;
+
+                // 업데이트 시간 표시
+                if (json.last_updated) {
+                    document.getElementById('last-updated').innerText = `Last Updated: ${json.last_updated}`;
+                }
+
+                renderTable(globalData);
+                document.getElementById('result-count').innerText = `Total: ${globalData.length} Items`;
+
+                document.getElementById('result-area').style.display = 'block';
+                loader.style.display = 'none'; // 로딩 메시지 숨김
+
+            } catch (e) {
+                if (e.message === "BOT_WORKING") {
+                    loader.innerHTML = `
+                        <div style="padding: 20px; border: 2px dashed var(--primary-color); border-radius: 10px; display: inline-block;">
+                            <h3 style="margin:0 0 10px 0;">🤖 봇이 데이터를 수집하고 있습니다!</h3>
+                            <p style="margin:0;">현재 GitHub Actions가 최신 데이터를 긁어오고 있습니다.<br>
+                            잠시 후(약 5~10분)에 새로고침 해주세요.</p>
+                        </div>
+                    `;
+                    loader.style.color = "var(--text-color)";
+                } else {
+                    console.error(e);
+                    loader.innerText = "데이터 로드 실패: " + e.message;
+                    loader.style.color = "var(--danger-color)";
+                }
+            }
+        }
+
         function renderTable(data) {
             const tbody = document.getElementById('table-body');
             tbody.innerHTML = '';
@@ -223,7 +281,25 @@
                 tbody.appendChild(tr);
             });
         }
-        // ... (omitted lines) ...
+
+        function sortTable(key) {
+            if (sortDir.key === key) sortDir.asc = !sortDir.asc;
+            else { sortDir.key = key; sortDir.asc = true; }
+
+            globalData.sort((a, b) => {
+                let valA = a[key];
+                let valB = b[key];
+
+                if (typeof valA === 'string') valA = valA.toUpperCase();
+                if (typeof valB === 'string') valB = valB.toUpperCase();
+
+                if (valA < valB) return sortDir.asc ? -1 : 1;
+                if (valA > valB) return sortDir.asc ? 1 : -1;
+                return 0;
+            });
+            renderTable(globalData);
+        }
+
         function downloadExcel() {
             if (globalData.length === 0) return alert('데이터가 없습니다.');
 
