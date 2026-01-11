@@ -39,17 +39,41 @@ def get_tickers_from_excel(file_path="RS분석툴.xlsm"):
         print(f"Error reading Excel tickers: {e}")
         return []
 
+import time
+import random
+
 def get_shares_outstanding(ticker):
     """
-    개별 종목의 발행주식수를 가져옵니다 (fast_info 사용).
+    개별 종목의 발행주식수를 가져옵니다.
+    Rate Limit 방지를 위해 약간의 딜레이와 재시도를 포함합니다.
     """
-    try:
-        t = yf.Ticker(ticker)
-        # fast_info 사용
-        shares = t.fast_info.get('shares', 0)
-        return ticker, shares
-    except:
-        return ticker, 0
+    # Random delay to reduce concurrency bursts
+    time.sleep(random.uniform(0.05, 0.2))
+    
+    for attempt in range(3):
+        try:
+            t = yf.Ticker(ticker)
+            # 1. fast_info 시도
+            shares = t.fast_info.get('shares', 0)
+            if shares > 0:
+                return ticker, shares
+            
+            # 2. 실패 시 info 시도 (조금 더 무거움)
+            # info = t.info
+            # shares = info.get('sharesOutstanding', 0)
+            # if shares > 0:
+            #     return ticker, shares
+            
+            # Retry if 0
+            if attempt < 2:
+                time.sleep(0.5)
+                continue
+                
+        except:
+            time.sleep(0.5)
+            pass
+            
+    return ticker, 0
 
 def get_market_cap_and_rs(ticker_info_list, limit=None, progress_callback=None):
     """
@@ -105,7 +129,8 @@ def get_market_cap_and_rs(ticker_info_list, limit=None, progress_callback=None):
         total_tickers = len(tickers)
         completed_shares = 0
         
-        with concurrent.futures.ThreadPoolExecutor(max_workers=20) as executor:
+        # Rate Limit 방지를 위해 완전 안전 모드 (순차 처리)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
             future_to_ticker = {executor.submit(get_shares_outstanding, t): t for t in tickers}
             for future in concurrent.futures.as_completed(future_to_ticker):
                 t, s = future.result()

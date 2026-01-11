@@ -214,9 +214,13 @@
                 // 정적 JSON 파일 로드
                 const res = await fetch('/data/result.json?t=' + new Date().getTime());
 
+                if (res.status === 404) {
+                    // 404 means file was deleted and bot is working
+                    throw new Error("BOT_WORKING");
+                }
+
                 if (!res.ok) {
-                    // 아직 파일이 생성되지 않았을 때
-                    throw new Error("아직 생성된 데이터 파일이 없습니다. (GitHub Actions가 실행 중일 수 있습니다)");
+                    throw new Error("데이터 로드 실패 code: " + res.status);
                 }
 
                 const json = await res.json();
@@ -234,9 +238,20 @@
                 loader.style.display = 'none'; // 로딩 메시지 숨김
 
             } catch (e) {
-                alert("데이터 로드 실패: " + e.message);
-                loader.innerText = "데이터 로드 실패 (새로고침 해주세요)";
-                loader.style.color = "var(--danger-color)";
+                if (e.message === "BOT_WORKING") {
+                    loader.innerHTML = `
+                        <div style="padding: 20px; border: 2px dashed var(--primary-color); border-radius: 10px; display: inline-block;">
+                            <h3 style="margin:0 0 10px 0;">🤖 봇이 데이터를 수집하고 있습니다!</h3>
+                            <p style="margin:0;">현재 GitHub Actions가 최신 데이터를 긁어오고 있습니다.<br>
+                            잠시 후(약 5~10분)에 새로고침 해주세요.</p>
+                        </div>
+                    `;
+                    loader.style.color = "var(--text-color)";
+                } else {
+                    console.error(e);
+                    loader.innerText = "데이터 로드 실패: " + e.message;
+                    loader.style.color = "var(--danger-color)";
+                }
             }
         }
 
