@@ -260,18 +260,38 @@ def process_single_ticker(ticker, batch_data, qqq_data):
         # 1. Sector  Industry (캐시 우선)
         cached_info = SECTOR_CACHE.get(ticker)
         
-        # 캐시가 있고, 내용이 유효(N/A가 아님)한 경우에만 사용
-        # 사용자가 "N/A인 것도 다시 찔러보길" 원하므로, N/A면 API 호출 시도
-        if cached_info and cached_info.get('Sector', 'N/A') != 'N/A':
-            sector = cached_info.get('Sector', 'N/A')
-            industry = cached_info.get('Industry', 'N/A')
-        else:
-            # 캐시 미스: Info 호출 (무거움, 차단 위험 있음)
+        use_cache = False
+        if cached_info:
+            c_sec = str(cached_info.get('Sector', '')).strip().upper()
+            c_ind = str(cached_info.get('Industry', '')).strip().upper()
+            
+            # 유효하지 않은 값 리스트
+            invalid_values = ['N/A', 'NAN', 'NONE', '', 'NULL']
+            
+            if c_sec not in invalid_values and c_ind not in invalid_values:
+                use_cache = True
+                sector = cached_info.get('Sector')
+                industry = cached_info.get('Industry')
+            else:
+                # 캐시에 있지만 N/A인 경우 -> 재시도 대상
+                # print(f"[{ticker}] 캐시된 정보가 N/A여서 재시도합니다.") # 너무 시끄러울 수 있어서 생략하거나 필요시 주석 해제
+                pass 
+        
+        if not use_cache:
+            # 캐시 미스 또는 N/A 재시도: Info 호출
             try:
                 info = t.info
-                sector = info.get('sector', 'N/A')
-                industry = info.get('industry', 'N/A')
-                # 캐시 업데이트
+                new_sec = info.get('sector', 'N/A')
+                new_ind = info.get('industry', 'N/A')
+                
+                # 유의미한 정보가 구해졌을 때만 업데이트 (혹은 N/A라도 업데이트해서 다음 호출 방지? 
+                # -> 사용자는 "채워지길" 원하므로 계속 시도하는게 맞음. 
+                # 단, 너무 잦은 호출 방지를 위해 하루에 한 번만 등 제약이 있으면 좋지만 일단은 매번 시도)
+                
+                sector = new_sec
+                industry = new_ind
+                
+                # 캐시 업데이트 (메모리)
                 SECTOR_CACHE[ticker] = {
                     "Sector": sector,
                     "Industry": industry
