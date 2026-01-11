@@ -97,23 +97,14 @@ import random
 
 def get_yf_session():
     """
-    Create a custom session with a random browser-like User-Agent
-    to avoid being blocked by Yahoo Finance in GitHub Actions.
+    Create a custom session with a FIXED browser-like User-Agent.
+    Rotating agents might trigger security flags on same IP.
     """
-    user_agents = [
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0",
-        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    ]
-    
     session = requests.Session()
     session.headers.update({
-        "User-Agent": random.choice(user_agents),
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
+        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+        "Accept": "*/*",
         "Accept-Encoding": "gzip, deflate, br",
-        "Referer": "https://finance.yahoo.com/",
         "Connection": "keep-alive"
     })
     return session
@@ -123,7 +114,7 @@ def get_ticker_details(ticker, need_metadata=False):
     개별 종목의 발행주식수와 메타데이터(Sector, Industry)를 가져옵니다.
     Rate Limit 방지를 위해 딜레이와 재시도를 포함합니다.
     """
-    time.sleep(random.uniform(0.5, 1.0)) # Increased delay
+    time.sleep(random.uniform(2.0, 4.0)) # Drastically increased delay for safety
     
     shares = 0
     sector = None
