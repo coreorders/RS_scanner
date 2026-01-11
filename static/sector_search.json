@@ -111,10 +111,6 @@
     "Sector": "Technology",
     "Industry": "Semiconductor Equipment & Materials"
   },
-  "GDXU": {
-    "Sector": "N/A",
-    "Industry": "N/A"
-  },
   "CIEN": {
     "Sector": "Technology",
     "Industry": "Communication Equipment"
@@ -154,10 +150,6 @@
   "TARS": {
     "Sector": "Healthcare",
     "Industry": "Biotechnology"
-  },
-  "SHNY": {
-    "Sector": "N/A",
-    "Industry": "N/A"
   },
   "COKE": {
     "Sector": "Consumer Defensive",
@@ -246,10 +238,6 @@
   "EPAM": {
     "Sector": "Technology",
     "Industry": "Information Technology Services"
-  },
-  "DGP": {
-    "Sector": "N/A",
-    "Industry": "N/A"
   },
   "SCCO": {
     "Sector": "Basic Materials",
@@ -1167,10 +1155,6 @@
     "Sector": "Consumer Cyclical",
     "Industry": "Footwear & Accessories"
   },
-  "SLVO": {
-    "Sector": "N/A",
-    "Industry": "N/A"
-  },
   "BH-A": {
     "Sector": "Consumer Cyclical",
     "Industry": "Restaurants"
@@ -1659,10 +1643,6 @@
     "Sector": "Technology",
     "Industry": "Semiconductors"
   },
-  "GLDI": {
-    "Sector": "N/A",
-    "Industry": "N/A"
-  },
   "GILD": {
     "Sector": "Healthcare",
     "Industry": "Drug Manufacturers - General"
@@ -2135,10 +2115,6 @@
     "Sector": "Financial Services",
     "Industry": "Banks - Regional"
   },
-  "BULZ": {
-    "Sector": "N/A",
-    "Industry": "N/A"
-  },
   "CLH": {
     "Sector": "Industrials",
     "Industry": "Waste Management"
@@ -2451,10 +2427,6 @@
     "Sector": "Energy",
     "Industry": "Oil & Gas Midstream"
   },
-  "CCZ": {
-    "Sector": "N/A",
-    "Industry": "N/A"
-  },
   "FELE": {
     "Sector": "Industrials",
     "Industry": "Specialty Industrial Machinery"
@@ -2502,10 +2474,6 @@
   "PRIM": {
     "Sector": "Industrials",
     "Industry": "Engineering & Construction"
-  },
-  "MLPR": {
-    "Sector": "N/A",
-    "Industry": "N/A"
   },
   "ECL": {
     "Sector": "Basic Materials",
@@ -2634,10 +2602,6 @@
   "WTW": {
     "Sector": "Financial Services",
     "Industry": "Insurance Brokers"
-  },
-  "FNGS": {
-    "Sector": "N/A",
-    "Industry": "N/A"
   },
   "VSEC": {
     "Sector": "Industrials",
@@ -3174,10 +3138,6 @@
   "BR": {
     "Sector": "Technology",
     "Industry": "Information Technology Services"
-  },
-  "FNGO": {
-    "Sector": "N/A",
-    "Industry": "N/A"
   },
   "LEU": {
     "Sector": "Energy",
@@ -4471,10 +4431,6 @@
     "Sector": "Consumer Defensive",
     "Industry": "Household & Personal Products"
   },
-  "FISV": {
-    "Sector": "N/A",
-    "Industry": "N/A"
-  },
   "MSTR": {
     "Sector": "Technology",
     "Industry": "Software - Application"
@@ -4482,9 +4438,5 @@
   "LRN": {
     "Sector": "Consumer Defensive",
     "Industry": "Education & Training Services"
-  },
-  "CPNG": {
-    "Sector": "Consumer Cyclical",
-    "Industry": "Internet Retail"
   }
 }
