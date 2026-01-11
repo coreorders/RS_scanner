@@ -152,16 +152,20 @@
 <body>
 
     <div class="container">
-        <h1>🇺🇸 Lee's RS Scanner</h1>
+        <h1 id="page-title">US Market RS Score</h1>
         <p class="subtitle" id="last-updated">업데이트 확인 중...</p>
 
         <div class="info-box">
-            <p>1. <strong>일일 자동 업데이트</strong>: 매일 미국 장 마감 후 서버가 자동으로 데이터를 갱신합니다.<br>
-                2. <strong>RS 계산</strong>: ((개별종목 60일 변동률 / QQQ 60일 변동률) - 1)<br>
-                3. <strong>시가총액</strong>: 주가 × 발행주식수</p>
+            <p>1. <strong>일일 자동 업데이트</strong>: 매일 미국 장 마감 후 서버가 자동으로 데이터를 갱신합니다. (매일 UTC 21:00 / 한국 시간 오전 6:00)<br>
+                2. <strong>RS (Relative Strength)</strong>: ((개별종목 60일 변동률 / QQQ 60일 변동률) - 1)<br>
+                &nbsp;&nbsp;&nbsp;- 벤치마크(QQQ) 대비 주가 상승 강도를 측정합니다. 양수(+)면 시장보다 강함, 음수(-)면 약함을 의미합니다.<br>
+                3. <strong>시가총액</strong>: 주가 × 발행주식수 (기업의 총 시장 가치)</p>
         </div>
 
-        <button id="load-btn" onclick="loadData()">📄 최신 리포트 불러오기</button>
+        <!-- 로딩 상태 표시 -->
+        <div id="loading-msg" style="margin-top:20px; font-size:18px; color:var(--primary-color);">
+            데이터 로딩 중... ⏳
+        </div>
 
         <div id="result-area">
             <div class="btn-group">
@@ -194,10 +198,17 @@
         let globalData = [];
         let sortDir = { key: 'RS', asc: false };
 
+        // 페이지 로드 시 자동 실행
+        window.onload = function () {
+            const today = new Date();
+            const dateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
+            document.getElementById('page-title').innerText = `${dateStr} US Market RS Score`;
+
+            loadData();
+        };
+
         async function loadData() {
-            const btn = document.getElementById('load-btn');
-            btn.disabled = true;
-            btn.innerText = "데이터 로딩 중...";
+            const loader = document.getElementById('loading-msg');
 
             try {
                 // 정적 JSON 파일 로드
@@ -220,12 +231,12 @@
                 document.getElementById('result-count').innerText = `Total: ${globalData.length} Items`;
 
                 document.getElementById('result-area').style.display = 'block';
-                btn.style.display = 'none'; // 로드 후 버튼 숨김
+                loader.style.display = 'none'; // 로딩 메시지 숨김
 
             } catch (e) {
                 alert("데이터 로드 실패: " + e.message);
-                btn.innerText = "다시 시도";
-                btn.disabled = false;
+                loader.innerText = "데이터 로드 실패 (새로고침 해주세요)";
+                loader.style.color = "var(--danger-color)";
             }
         }
 
