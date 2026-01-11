@@ -129,14 +129,17 @@ def get_ticker_details(ticker, need_metadata=False):
             # 2. Metadata or fallback
             if need_metadata or shares == 0:
                 try:
-                    info = t.info
+                    # [Safety Update] Disable t.info for Sector/Industry to prevent IP blocking
+                    # Only fetch if absolutely necessary (e.g. shares=0), otherwise skip metadata
                     if shares == 0:
-                        shares = info.get('sharesOutstanding', 0)
-                        if shares == 0:
-                            shares = info.get('impliedSharesOutstanding', 0)
-                    if need_metadata:
-                        sector = info.get('sector', 'N/A')
-                        industry = info.get('industry', 'N/A')
+                         # Use fast_info fallback first if possible, or skip
+                         pass
+                    
+                    # Disabled to prevent JSONDecodeError (blocking)
+                    # if need_metadata:
+                    #     info = t.info
+                    #     sector = info.get('sector', 'N/A')
+                    #     industry = info.get('industry', 'N/A')
                 except:
                     pass
             
