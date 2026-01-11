@@ -1,0 +1,38 @@
+{
+  "last_updated": "2026-01-11 14:28:54 UTC",
+  "total_count": 4,
+  "data": [
+    {
+      "Ticker": "GDXU",
+      "RS": 0.3012,
+      "Market Cap": "N/A",
+      "Price": 299.13,
+      "Sector": "N/A",
+      "Industry": "N/A"
+    },
+    {
+      "Ticker": "SHNY",
+      "RS": 0.1145,
+      "Market Cap": "N/A",
+      "Price": 148.47,
+      "Sector": "N/A",
+      "Industry": "N/A"
+    },
+    {
+      "Ticker": "DGP",
+      "RS": 0.1018,
+      "Market Cap": "N/A",
+      "Price": 174.91,
+      "Sector": "N/A",
+      "Industry": "N/A"
+    },
+    {
+      "Ticker": "CPNG",
+      "RS": -0.3176,
+      "Market Cap": "41.54B",
+      "Price": 22.74,
+      "Sector": "Consumer Cyclical",
+      "Industry": "Internet Retail"
+    }
+  ]
+}

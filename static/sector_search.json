@@ -4482,5 +4482,9 @@
   "LRN": {
     "Sector": "Consumer Defensive",
     "Industry": "Education & Training Services"
+  },
+  "CPNG": {
+    "Sector": "Consumer Cyclical",
+    "Industry": "Internet Retail"
   }
 }
