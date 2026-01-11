@@ -10,6 +10,37 @@ from concurrent.futures import ThreadPoolExecutor
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=FutureWarning)
 
+import json
+import os
+
+# 전역 캐시 변수
+SECTOR_CACHE_FILE = "static/sector_search.json"
+SECTOR_CACHE = {}
+
+def load_sector_cache():
+    global SECTOR_CACHE
+    if os.path.exists(SECTOR_CACHE_FILE):
+        try:
+            with open(SECTOR_CACHE_FILE, 'r', encoding='utf-8') as f:
+                SECTOR_CACHE = json.load(f)
+            print(f"Sector Cache Loaded: {len(SECTOR_CACHE)} items")
+        except Exception as e:
+            print(f"Cache Load Error: {e}")
+            SECTOR_CACHE = {}
+
+def save_sector_cache():
+    try:
+        if not os.path.exists('static'):
+            os.makedirs('static')
+        with open(SECTOR_CACHE_FILE, 'w', encoding='utf-8') as f:
+            json.dump(SECTOR_CACHE, f, ensure_ascii=False, indent=2)
+        print(f"Sector Cache Saved: {len(SECTOR_CACHE)} items")
+    except Exception as e:
+        print(f"Cache Save Error: {e}")
+
+# 초기 로드
+load_sector_cache()
+
 def get_tickers_from_google_sheet(url):
     """
     구글 시트 CSV URL에서 티커 목록을 가져옵니다.
@@ -99,7 +130,10 @@ def get_market_cap_and_rs(ticker_info_list, batch_size=20):
             
         # 딜레이 (옵션)
         time.sleep(1)
-        
+    
+    # 작업 완료 후 캐시 저장
+    save_sector_cache()
+    
     return results
 
 def process_single_ticker(ticker, batch_data, qqq_data):
@@ -152,28 +186,63 @@ def process_single_ticker(ticker, batch_data, qqq_data):
                 else:
                     rs_val = ((stock_current / stock_60ago) / (qqq_current / qqq_60ago)) - 1
         
-        # 메타데이터 (Market Cap 등) 
-        # Ticker.info 호출은 느릴 수 있음
-        try:
-            t = yf.Ticker(ticker)
-            info = t.info
-            market_cap = info.get('marketCap', 0)
-            sector = info.get('sector', 'N/A')
-            industry = info.get('industry', 'N/A')
+        # 메타데이터 (Market Cap, Sector, Industry)
+        # 1. 캐시 확인
+        cached_info = SECTOR_CACHE.get(ticker)
+        
+        market_cap = 0
+        mc_str = "N/A"
+        sector = "N/A"
+        industry = "N/A"
+
+        if cached_info:
+            # 캐시 히트: MarketCap은 변동성이 크므로 다시 가져올 수도 있지만, 
+            # 일단 요구사항인 "Sector/Industry"는 확실히 가져옴.
+            # MarketCap은 yf.download 데이터에는 없으므로, 
+            # 여기서 선택: API 호출 줄이려면 이것도 캐시 쓰거나, MarketCap만 따로 호출하거나.
+            # "새로운 정보가 있다면 추가" -> 기존 정보는 재사용 의미 강함.
+            # 하지만 시가총액은 매일 변하므로 갱신이 필요하긴 함.
+            # 일단 Sector/Industry만 캐시에서 쓰고, MarketCap은 Info 호출 시도하되 실패하면 N/A 처리 (또는 캐시된 값 있으면 사용)
             
-            # 포메팅
-            mc_str = f"{market_cap / 1e9:.2f}B" if market_cap else "N/A"
+            sector = cached_info.get('Sector', 'N/A')
+            industry = cached_info.get('Industry', 'N/A')
             
-        except Exception:
-            market_cap = 0
-            mc_str = "N/A"
-            sector = "N/A"
-            industry = "N/A"
+            # 시가총액은 캐시에 없을 수도 있고 변동되므로...
+            # 하지만 API 호출을 아예 안 하려면 캐시된 시총이나 N/A 써야 함.
+            # 사용자가 "Sector/Industry"를 강조했으므로, 이 둘이 있으면 API 호출 생략 (IP 차단 방지 최우선)
+            # --> 시총 업데이트 필요 시 별도 로직 필요. 지금은 안전하게 캐시/N/A 사용.
+            pass
+            
+        else:
+            # 2. 캐시 미스: API 호출
+            try:
+                t = yf.Ticker(ticker)
+                info = t.info
+                
+                market_cap = info.get('marketCap', 0)
+                sector = info.get('sector', 'N/A')
+                industry = info.get('industry', 'N/A')
+                
+                # 포메팅
+                mc_str = f"{market_cap / 1e9:.2f}B" if market_cap else "N/A"
+                
+                # 캐시 업데이트 (메모리)
+                SECTOR_CACHE[ticker] = {
+                    "Sector": sector,
+                    "Industry": industry
+                }
+                
+            except Exception:
+                # 호출 실패 시 (429 등)
+                market_cap = 0
+                mc_str = "N/A"
+                sector = "N/A"
+                industry = "N/A"
 
         return {
             "Ticker": ticker,
             "RS": round(rs_val, 4) if rs_val is not None else 0,
-            "Market Cap": mc_str,
+            "Market Cap": mc_str, # 이 부분은 API 호출 안하면 N/A가 될 수 있음. 시총은 yf.download에서 못가져옴.
             "Price": round(float(hist.iloc[-1]), 2),
             "Sector": sector,
             "Industry": industry
