@@ -1,0 +1,40 @@
+
+name: Daily Stock Screen
+
+on:
+  schedule:
+    # 매일 UTC 21:00 (한국 시간 오전 6:00) 실행
+    - cron: '0 21 * * *'
+  # 수동 실행 버튼 (테스트용)
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update-data:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install pandas yfinance openpyxl requests lxml flask
+        
+    - name: Run Data Fetcher
+      run: |
+        python fetch_and_save.py
+        
+    - name: Commit and Push results
+      uses: stefanzweifel/git-auto-commit-action@v4
+      with:
+        commit_message: "Update stock data (Auto-generated)"
+        file_pattern: static/result.json
