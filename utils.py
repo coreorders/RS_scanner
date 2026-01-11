@@ -4,6 +4,59 @@ import pandas as pd
 import requests
 import concurrent.futures
 
+def get_tickers_from_google_sheet(url):
+    """
+    구글 스프레드시트 CSV URL에서 티커를 읽어옵니다.
+    A열(첫 번째 열)을 티커로 간주하며, 첫 행이 'Ticker' 같은 헤더가 아니더라도 처리합니다.
+    """
+    try:
+        # 헤더 없이 일단 읽음
+        df = pd.read_csv(url, header=None)
+        
+        if df.empty:
+            print("Google Sheet is empty.")
+            return []
+            
+        # 첫 번째 열(Column 0)이 티커
+        # 첫 행(Row 0)이 'Ticker', 'Symbol' 등 헤더 텍스트라면 제거
+        first_val = str(df.iloc[0, 0]).upper()
+        if first_val in ['TICKER', 'SYMBOL', 'CODE', '티커', '종목코드']:
+            df = df.iloc[1:]
+            
+        result_list = []
+        for _, row in df.iterrows():
+            # A열 확보
+            t = str(row[0]).strip().upper()
+            if not t or t == 'NAN': continue
+            
+            # C/D열 등이 있으면 Sector/Industry로 쓸 수도 있지만, 
+            # 사용자 요청은 'A열'만 언급했으므로 나머지는 기본 N/A 처리하되
+            # 혹시 모르니 컬럼이 충분하면 가져옴
+            sec = 'N/A'
+            ind = 'N/A'
+            if len(df.columns) >= 3:
+                # 안전하게 가져오기
+                try: 
+                    s_val = str(row[1])
+                    if s_val and s_val != 'nan': sec = s_val
+                    
+                    i_val = str(row[2])
+                    if i_val and i_val != 'nan': ind = i_val
+                except: pass
+            
+            result_list.append({
+                "Ticker": t,
+                "Sector": sec,
+                "Industry": ind
+            })
+            
+        print(f"Loaded {len(result_list)} tickers from Google Sheet.")
+        return result_list
+        
+    except Exception as e:
+        print(f"Error reading Google Sheet: {e}")
+        return []
+
 def get_tickers_from_excel(file_path="RS분석툴.xlsm"):
     """
     엑셀 파일에서 티커 및 부가 정보(Sector, Industry)를 읽어옵니다.
@@ -42,158 +95,181 @@ def get_tickers_from_excel(file_path="RS분석툴.xlsm"):
 import time
 import random
 
-def get_shares_outstanding(ticker):
+def get_ticker_details(ticker, need_metadata=False):
     """
-    개별 종목의 발행주식수를 가져옵니다.
-    Rate Limit 방지를 위해 약간의 딜레이와 재시도를 포함합니다.
+    개별 종목의 발행주식수와 메타데이터(Sector, Industry)를 가져옵니다.
+    Rate Limit 방지를 위해 딜레이와 재시도를 포함합니다.
     """
-    # Random delay to reduce concurrency bursts
-    time.sleep(random.uniform(0.05, 0.2))
+    # Random delay 
+    time.sleep(random.uniform(0.1, 0.3))
     
-    for attempt in range(3):
+    shares = 0
+    sector = None
+    industry = None
+    
+    for attempt in range(3): # 3회 재시도
         try:
             t = yf.Ticker(ticker)
-            # 1. fast_info 시도
+            
+            # 1. Shares (fast_info 우선)
             shares = t.fast_info.get('shares', 0)
+            
+            # 2. Metadata (필요하거나 shares가 0일 때 info 확인)
+            if need_metadata or shares == 0:
+                try:
+                    info = t.info
+                    # Shares fallback
+                    if shares == 0:
+                        shares = info.get('sharesOutstanding', 0)
+                        if shares == 0:
+                            shares = info.get('impliedSharesOutstanding', 0)
+                    
+                    # Metadata fallback (없으면 info에서 가져옴)
+                    if need_metadata:
+                        sector = info.get('sector', 'N/A')
+                        industry = info.get('industry', 'N/A')
+                except:
+                    pass
+            
+            # 성공 판별 (shares가 있으면 일단 성공으로 침)
             if shares > 0:
-                return ticker, shares
+                return ticker, shares, sector, industry
             
-            # 2. 실패 시 info 시도 (조금 더 무거움)
-            # info = t.info
-            # shares = info.get('sharesOutstanding', 0)
-            # if shares > 0:
-            #     return ticker, shares
-            
-            # Retry if 0
-            if attempt < 2:
-                time.sleep(0.5)
-                continue
+            # 실패 시 대기 후 재시도
+            time.sleep(1)
                 
         except:
-            time.sleep(0.5)
+            time.sleep(1)
             pass
             
-    return ticker, 0
+    return ticker, shares, sector, industry
 
 def get_market_cap_and_rs(ticker_info_list, limit=None, progress_callback=None):
     """
-    RS 및 시가총액 계산.
-    ticker_info_list: [{'Ticker': '...', 'Sector': '...', 'Industry': '...'}, ...]
-    progress_callback: function(int) -> update progress percentage
+    1. 가격 데이터 Bulk Download (속도 빠름)
+    2. 발행주식수 & 메타데이터 개별 조회 (속도 느림, 안전하게 순차 처리)
+    3. RS 및 시총 계산
     """
+    if progress_callback: progress_callback(0)
+        
+    if limit:
+        ticker_info_list = ticker_info_list[:limit]
+
+    tickers = [item['Ticker'] for item in ticker_info_list]
+    # 빠른 조회를 위해 Map 생성
+    base_info_map = {item['Ticker']: item for item in ticker_info_list}
+
+    print(f"Fetching price data for {len(tickers)} tickers...")
+    if progress_callback: progress_callback(5)
+    
+    # 1. Price Bulk Download
+    search_tickers = tickers + ["QQQ"]
+    # yfinance 0.2.40+ handles limits internally, but for safety
     try:
-        if progress_callback: progress_callback(0)
-        
-        if limit and len(ticker_info_list) > limit:
-            ticker_info_list = ticker_info_list[:limit]
-            
-        tickers = [item['Ticker'] for item in ticker_info_list]
-        info_map = {item['Ticker']: item for item in ticker_info_list}
-            
-        print(f"Processing {len(tickers)} tickers...")
-        if progress_callback: progress_callback(5)
-        
-        # 1. Price Data (Bulk Download)
-        all_tickers = tickers + ["QQQ"]
-        print("Downloading price data...")
-        # yfinance download logs progress to stdout, we can't easily capture it for web UI
-        data = yf.download(all_tickers, period="6mo", progress=True, threads=True)
-        
-        if progress_callback: progress_callback(30)
-        
-        if 'Adj Close' in data.columns:
-            closes = data['Adj Close']
-        elif 'Close' in data.columns:
-            closes = data['Close']
-        else:
-            closes = data
+        data = yf.download(search_tickers, period="6mo", progress=True, threads=True)
+    except Exception as e:
+        print(f"Error downloading price data: {e}")
+        return []
 
-        if len(closes) < 61:
-            raise ValueError("Not enough historical data.")
+    if data.empty:
+        return []
+    
+    if progress_callback: progress_callback(30)
 
-        latest_prices = closes.iloc[-1]
-        prices_60_ago = closes.iloc[-61]
-        
-        # QQQ Data
-        qqq_curr = latest_prices.get("QQQ", 0)
-        qqq_prev = prices_60_ago.get("QQQ", 0)
-        
-        if qqq_prev == 0:
-            qqq_change = 0 
-        else:
-            qqq_change = qqq_curr / qqq_prev
+    # 컬럼 처리 (Adj Close 우선)
+    if 'Adj Close' in data.columns:
+        closes = data['Adj Close']
+    elif 'Close' in data.columns:
+        closes = data['Close']
+    else:
+        # MultiIndex 구조 처리
+        try: closes = data.xs('Adj Close', axis=1, level=0)
+        except: closes = data
+
+    if len(closes) < 30: # 데이터가 너무 적으면 스킵
+        raise ValueError("Not enough historical data.")
+
+    latest = closes.iloc[-1]
+    # 60일 전 가격 (없으면 가장 오래된 값)
+    prev_60_idx = -61 if len(closes) >= 61 else 0
+    prev_60 = closes.iloc[prev_60_idx]
+
+    # QQQ Benchmark
+    q_cur = latest.get("QQQ", 0)
+    q_prev = prev_60.get("QQQ", 0)
+    q_chg = (q_cur / q_prev) if q_prev != 0 else 0
+
+    results = []
+    
+    print("Fetching component details (Shares & Metadata)...")
+    
+    # 2. 개별 종목 상세 정보 조회 (순차 처리 or 소수 병렬)
+    # utils 함수 내에서는 병렬 처리를 위한 executor 구성을 유연하게
+    
+    tasks = []
+    # 현재 설정: 안전제일 (순차 처리 권장)
+    max_workers = 1 
+    
+    processed_count = 0
+    total_count = len(tickers)
+    
+    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
+        # Submit tasks
+        future_to_ticker = {}
+        for t in tickers:
+            # 구글 시트에서 가져온 기본 정보
+            base = base_info_map.get(t, {})
+            current_sec = base.get('Sector', 'N/A')
+            current_ind = base.get('Industry', 'N/A')
             
-        # 2. Shares Outstanding (Parallel Fetch)
-        print("Fetching shares outstanding...")
-        shares_map = {}
-        total_tickers = len(tickers)
-        completed_shares = 0
-        
-        # Rate Limit 방지를 위해 완전 안전 모드 (순차 처리)
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            future_to_ticker = {executor.submit(get_shares_outstanding, t): t for t in tickers}
-            for future in concurrent.futures.as_completed(future_to_ticker):
-                t, s = future.result()
-                shares_map[t] = s
-                
-                # Progress Update: 30% -> 90%
-                completed_shares += 1
-                if progress_callback:
-                    # 30 + (completed / total) * 60
-                    current_progress = 30 + int((completed_shares / total_tickers) * 60)
-                    progress_callback(current_progress)
-        
-        results = []
-        
-        for ticker in tickers:
-            if ticker == "QQQ": continue
+            # 메타데이터가 N/A면 API에서 가져오도록 요청 (need_metadata=True)
+            need_meta = (current_sec == 'N/A' or current_ind == 'N/A')
             
+            future = executor.submit(get_ticker_details, t, need_meta)
+            future_to_ticker[future] = t
+
+        for future in concurrent.futures.as_completed(future_to_ticker):
+            t = future_to_ticker[future]
             try:
-                curr = latest_prices.get(ticker, None)
-                prev = prices_60_ago.get(ticker, None)
+                # 결과: shares, sector, industry
+                _, share_count, fetched_sec, fetched_ind = future.result()
                 
-                if pd.isna(curr) or pd.isna(prev) or prev == 0:
+                processed_count += 1
+                # Progress Update: 30% -> 90%
+                if progress_callback:
+                    current_progress = 30 + int((processed_count / total_count) * 60)
+                    progress_callback(current_progress)
+
+                # 가격 데이터 확인
+                cur_price = latest.get(t, None)
+                prev_price = prev_60.get(t, None)
+                
+                if pd.isna(cur_price) or pd.isna(prev_price) or prev_price == 0:
                     continue
-                    
-                stock_change = curr / prev
                 
-                if qqq_change == 0:
-                    rs = 0
-                else:
-                    rs = (stock_change / qqq_change) - 1
+                # RS 계산
+                chg = cur_price / prev_price
+                rs = (chg / q_chg) - 1 if q_chg != 0 else 0
                 
-                shares = shares_map.get(ticker, 0)
-                market_cap = curr * shares
+                # Market Cap
+                mcap = cur_price * share_count
                 
-                # 기존 엑셀 정보 병합
-                base_info = info_map.get(ticker, {})
+                # 메타데이터 병합 (API값이 있으면 덮어쓰기)
+                base = base_info_map.get(t, {})
+                final_sec = fetched_sec if fetched_sec and fetched_sec != 'N/A' else base.get('Sector', 'N/A')
+                final_ind = fetched_ind if fetched_ind and fetched_ind != 'N/A' else base.get('Industry', 'N/A')
                 
                 results.append({
-                    "Ticker": ticker,
-                    "RS": round(rs, 4),
-                    "Price": round(curr, 2),
-                    "MarketCap": round(market_cap, 0),
-                    "Shares": shares,
-                    "Sector": base_info.get("Sector", "N/A"),
-                    "Industry": base_info.get("Industry", "N/A")
+                    "Ticker": t,
+                    "Price": round(float(cur_price), 2),
+                    "RS": round(float(rs), 4),
+                    "MarketCap": round(float(mcap), 0),
+                    "Shares": share_count,
+                    "Sector": final_sec,
+                    "Industry": final_ind
                 })
                 
             except Exception as e:
-                continue
-        
-        # Market Cap Rank 계산
-        # 1. 시가총액 내림차순 정렬
-        results.sort(key=lambda x: x['MarketCap'], reverse=True)
-        for idx, item in enumerate(results):
-            item['MarketCapRank'] = idx + 1
-            
-        # 2. 최종 RS 내림차순 정렬 (기본 뷰)
-        results.sort(key=lambda x: x['RS'], reverse=True)
-        
-        if progress_callback: progress_callback(100)
-            
-        return results
-
     except Exception as e:
         print(f"Error in calculation: {e}")
         return []
