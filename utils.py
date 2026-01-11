@@ -270,9 +270,15 @@ def get_market_cap_and_rs(ticker_info_list, limit=None, progress_callback=None):
                 })
                 
             except Exception as e:
-    except Exception as e:
-        print(f"Error in calculation: {e}")
-        return []
+                print(f"Error processing {t}: {e}")
+                continue
+
+    # Rank 부여
+    results.sort(key=lambda x: x['MarketCap'], reverse=True)
+    for i, r in enumerate(results):
+        r['MarketCapRank'] = i + 1
+        
+    return results
 
 if __name__ == "__main__":
     t = get_tickers_from_excel()
