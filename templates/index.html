@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lee's RS Scanner (US)</title>
+    <title>Lee's RS Scanner (Client-Side)</title>
     <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.png') }}">
     <style>
         :root {
@@ -99,6 +99,21 @@
             }
         }
 
+        #debug-log {
+            width: 100%;
+            height: 100px;
+            background-color: #000;
+            color: #0f0;
+            font-family: monospace;
+            font-size: 11px;
+            text-align: left;
+            padding: 10px;
+            margin-top: 10px;
+            border: 1px solid #333;
+            overflow-y: scroll;
+            display: none;
+        }
+
         #result-area {
             display: none;
             margin-top: 40px;
@@ -177,7 +192,7 @@
 <body>
 
     <div class="container">
-        <h1>Lee's RS Scanner (US)</h1>
+        <h1>Lee's RS Scanner (Client-Side)</h1>
 
         <div class="info-box">
             <p>1. <strong>Solution</strong>: Vercel IP 차단을 피해 <strong>브라우저에서 직접 야후 데이터를 수집</strong>합니다.<br>
@@ -193,6 +208,7 @@
             <p>브라우저가 열심히 데이터를 모으고 있습니다... <span id="progress-percent"
                     style="font-weight:bold; color:var(--primary-color);">0%</span></p>
             <p id="progress-detail" style="font-size:12px; color:#888; margin-top:5px;">(준비 중...)</p>
+            <div id="debug-log"></div>
         </div>
 
         <div id="result-area">
@@ -225,30 +241,39 @@
     <script>
         let globalData = [];
         let sortDir = { key: '', asc: true };
-        const BATCH_SIZE = 5; // 브라우저 부하 관리용
-        const DELAY_BETWEEN_BATCHES = 500; // ms
+        const BATCH_SIZE = 5;
+        const DELAY_BETWEEN_BATCHES = 500;
 
-        // PROXY LIST (Fallback rotation)
-        // 1순위: corsproxy.io (가장 무난)
-        // 2순위: api.allorigins.win (백업)
+        // PROXY LIST (강력한 프록시 추가)
         const PROXIES = [
+            "https://api.allorigins.win/raw?url=",
             "https://corsproxy.io/?url=",
-            "https://api.allorigins.win/raw?url="
+            "https://api.codetabs.com/v1/proxy?quest="
         ];
 
+        function log(msg) {
+            const d = document.getElementById('debug-log');
+            d.style.display = 'block';
+            d.innerHTML += `<div>[${new Date().toLocaleTimeString()}] ${msg}</div>`;
+            d.scrollTop = d.scrollHeight;
+            console.log(msg);
+        }
+
         async function fetchWithProxy(targetUrl) {
+            let lastError = null;
             for (const proxyBase of PROXIES) {
                 try {
-                    // allorigins 등 일부 프록시는 인코딩 필요
                     const proxyUrl = proxyBase + encodeURIComponent(targetUrl);
+                    // log(`Try Proxy: ${proxyBase}`);
                     const res = await fetch(proxyUrl);
                     if (res.ok) return res;
-                    console.warn(`Proxy failed: ${proxyBase}`);
+                    // log(`Failed ${proxyBase}: ${res.status}`);
                 } catch (e) {
-                    console.warn(`Proxy connection error: ${proxyBase}`, e);
+                    lastError = e;
+                    // log(`Error ${proxyBase}: ${e.message}`);
                 }
             }
-            return null; // All failed
+            return null;
         }
 
         async function startClientSideSearch() {
@@ -258,15 +283,17 @@
             const pPercent = document.getElementById('progress-percent');
             const pDetail = document.getElementById('progress-detail');
             const rCount = document.getElementById('result-count');
+            const debugDiv = document.getElementById('debug-log');
 
             btn.disabled = true;
             loader.style.display = 'block';
+            debugDiv.innerHTML = "<div>=== Start Log ===</div>"; // 초기화
             area.style.display = 'none';
             globalData = [];
             rCount.innerText = "";
 
             try {
-                // 1. Get Tickers from Server (Excel)
+                // 1. Get Tickers
                 pDetail.innerText = "티커 리스트 로딩 중...";
                 const resInit = await fetch('/api/tickers');
                 if (!resInit.ok) throw new Error("서버 연결 실패 (Tickers)");
@@ -282,14 +309,30 @@
                     return;
                 }
 
-                // 2. Fetch QQQ Benchmark First
-                pDetail.innerText = "벤치마크(QQQ) 데이터 수집 중 (다중 프록시)...";
-                const qqqData = await fetchYahooChart("QQQ");
-                if (!qqqData || qqqData.length < 60) {
-                    throw new Error("QQQ 데이터를 모든 프록시에서 가져오지 못했습니다. 잠시 후 다시 시도해주세요.");
+                // 2. Fetch QQQ
+                pDetail.innerText = "벤치마크(QQQ) 데이터 수집 중... (프록시 확인)";
+                log("Fetching QQQ data...");
+
+                let qqqData = null;
+                try {
+                    qqqData = await fetchYahooChart("QQQ");
+                } catch (err) {
+                    log("QQQ fetch fatal error: " + err.message);
                 }
+
+                if (!qqqData || qqqData.length < 50) {
+                    log("QQQ fail. Retrying...");
+                    // Retry once more
+                    qqqData = await fetchYahooChart("QQQ");
+                }
+
+                if (!qqqData || qqqData.length < 50) {
+                    throw new Error("QQQ 데이터를 모든 프록시에서 가져오지 못했습니다. 잠시 후 다시 시도하거나 프록시 상태를 확인해주세요.");
+                }
+                log(`QQQ Data OK. Points: ${qqqData.length}`);
+
                 const qqqPerf = calculatePerformance(qqqData);
-                console.log("QQQ Performance:", qqqPerf);
+                log(`QQQ Perf: ${qqqPerf.toFixed(4)}`);
 
                 // 3. Loop Tickers
                 let processed = 0;
@@ -299,29 +342,24 @@
                     const batch = allItems.slice(i, i + BATCH_SIZE);
                     pDetail.innerText = `데이터 수집 중... (${i + 1} ~ ${Math.min(i + BATCH_SIZE, total)} / ${total})`;
 
-                    // Parallel fetch for batch
                     const batchPromises = batch.map(async (item) => {
                         try {
                             const ticker = item.Ticker;
-                            // Fetch Price & Shares
                             const [priceData, shares] = await Promise.all([
                                 fetchYahooChart(ticker),
                                 fetchYahooShares(ticker)
                             ]);
 
-                            if (!priceData || priceData.length < 60) return null;
+                            if (!priceData || priceData.length < 50) return null;
 
                             const itemPerf = calculatePerformance(priceData);
                             const currentPrice = priceData[priceData.length - 1].close;
 
-                            // RS Calculation
-                            // RS = ((Stock % Chg) / (QQQ % Chg)) - 1
                             let rs = 0;
                             if (qqqPerf !== 0) {
                                 rs = (itemPerf / qqqPerf) - 1;
                             }
 
-                            // Market Cap
                             const finalShares = shares || 0;
                             const mcap = currentPrice * finalShares;
 
@@ -336,24 +374,23 @@
                             };
 
                         } catch (err) {
-                            console.warn(`Failed ${item.Ticker}:`, err);
                             return null;
                         }
                     });
 
                     const results = await Promise.all(batchPromises);
 
-                    // Filter nulls
                     const validResults = results.filter(r => r !== null);
                     globalData = globalData.concat(validResults);
                     success += validResults.length;
                     processed += batch.length;
 
-                    // Update UI
+                    // Log progress occasionally
+                    if (processed % 20 === 0) log(`Processed ${processed}/${total}, Success: ${success}`);
+
                     const progress = Math.min(100, Math.round((processed / total) * 100));
                     pPercent.innerText = progress + '%';
 
-                    // Delay to be nice to the API/Proxy
                     await new Promise(r => setTimeout(r, DELAY_BETWEEN_BATCHES));
                 }
 
@@ -371,15 +408,16 @@
 
             } catch (e) {
                 console.error(e);
-                alert('오류 발생: ' + e.message);
+                log("CRITICAL ERROR: " + e.message);
+                alert('오류 발생: ' + e.message + "\n(세부 내용은 로그 확인)");
                 resetUI(btn, loader);
             }
         }
 
         // --- Yahoo Finance Helper (Client-Side) ---
 
-        // 1. Fetch Chart (Price History) with Proxy Rotation
         async function fetchYahooChart(ticker) {
+            // v8 endpoint
             const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=3mo`;
 
             try {
@@ -387,9 +425,20 @@
                 if (!res) return null;
 
                 const json = await res.json();
-                // API 구조 체크
-                if (!json.chart || !json.chart.result) return null;
-                const result = json.chart.result[0];
+
+                // Validate data structure
+                // Some proxies return { contents: "..." } (like allorigins sometimes, but raw should be direct)
+                // Let's check deep structure
+                let result = null;
+                if (json.chart && json.chart.result) {
+                    result = json.chart.result[0];
+                } else if (json.contents) {
+                    // Maybe double parsed?
+                    try {
+                        const inner = JSON.parse(json.contents);
+                        if (inner.chart && inner.chart.result) result = inner.chart.result[0];
+                    } catch (e) { }
+                }
 
                 if (!result || !result.timestamp || !result.indicators.quote[0].adjclose) return null;
 
@@ -404,12 +453,10 @@
                 }
                 return data;
             } catch (e) {
-                // console.error(`Error parsing chart for ${ticker}`, e);
                 return null;
             }
         }
 
-        // 2. Fetch Shares Outstanding (Quote Summary) with Proxy Rotation
         async function fetchYahooShares(ticker) {
             const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=defaultKeyStatistics`;
 
@@ -418,9 +465,19 @@
                 if (!res) return 0;
 
                 const json = await res.json();
-                if (!json.quoteSummary || !json.quoteSummary.result) return 0;
 
-                const result = json.quoteSummary.result[0];
+                let result = null;
+                if (json.quoteSummary && json.quoteSummary.result) {
+                    result = json.quoteSummary.result[0];
+                } else if (json.contents) {
+                    try {
+                        const inner = JSON.parse(json.contents);
+                        if (inner.quoteSummary && inner.quoteSummary.result) result = inner.quoteSummary.result[0];
+                    } catch (e) { }
+                }
+
+                if (!result) return 0;
+
                 const shares = result.defaultKeyStatistics.sharesOutstanding.raw;
                 return shares || 0;
             } catch (e) {
@@ -429,8 +486,8 @@
         }
 
         function calculatePerformance(data) {
-            if (data.length < 60) return 0;
-            // ~3mo data, use available window close to 60 days
+            if (data.length < 50) return 0;
+            // ~60 days lookback
             let lookbackIdx = data.length - 1 - 60;
             if (lookbackIdx < 0) lookbackIdx = 0;
 
@@ -442,7 +499,7 @@
         }
 
         function resetUI(btn, loader) {
-            loader.style.display = 'none';
+            // loader.style.display = 'none'; // Keep log visible on failure
             btn.disabled = false;
             btn.innerText = '🔍 조회하기';
         }
