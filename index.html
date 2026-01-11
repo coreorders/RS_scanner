@@ -353,7 +353,7 @@
             const excelData = globalData.map(item => ({
                 Ticker: item.Ticker,
                 Price: item.Price,
-                MarketCap: item.MarketCap,
+                MarketCap: parseMarketCap(item['Market Cap']),
                 MarketCapRank: item.MarketCapRank,
                 RS: item.RS,
                 Sector: item.Sector,
