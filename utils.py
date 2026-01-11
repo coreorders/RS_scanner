@@ -122,7 +122,10 @@ def get_ticker_details(ticker, need_metadata=False):
     
     for attempt in range(3): 
         try:
-            t = yf.Ticker(ticker)
+            # [Fix] Use custom session for Ticker to pass User-Agent
+            session = get_yf_session()
+            t = yf.Ticker(ticker, session=session)
+            
             # 1. Shares
             shares = t.fast_info.get('shares', 0)
             
@@ -132,8 +135,11 @@ def get_ticker_details(ticker, need_metadata=False):
                     # [Safety Update] Disable t.info for Sector/Industry to prevent IP blocking
                     # Only fetch if absolutely necessary (e.g. shares=0), otherwise skip metadata
                     if shares == 0:
-                         # Use fast_info fallback first if possible, or skip
-                         pass
+                        # Try to get shares from info if fast_info failed
+                         info = t.info
+                         shares = info.get('sharesOutstanding', 0)
+                         if shares == 0:
+                            shares = info.get('impliedSharesOutstanding', 0)
                     
                     # Disabled to prevent JSONDecodeError (blocking)
                     # if need_metadata:
@@ -271,12 +277,15 @@ def get_market_cap_and_rs(ticker_info_list, limit=None, progress_callback=None):
                         prev_price = float(closes[t].iloc[prev_60_idx])
                     except: pass
                 
-                # Fallback: Retry with session using yf.download (Ticker object doesn't accept session easily)
+                # Fallback: Retry with session using yf.download
                 if cur_price == 0 or prev_price == 0:
                     for _ in range(3): 
                         try:
-                            # Use yf.download with session for single ticker to ensure User-Agent is sent
-                            single_df = yf.download(t, period="6mo", session=session, progress=False, threads=False)
+                            # Create a FRESH session for each attempt to avoid poisoned cookies
+                            temp_session = get_yf_session()
+                            
+                            # Use yf.download with session for single ticker
+                            single_df = yf.download(t, period="6mo", session=temp_session, progress=False, threads=False)
                             if not single_df.empty:
                                 if 'Adj Close' in single_df.columns: s_hist = single_df['Adj Close']
                                 elif 'Close' in single_df.columns: s_hist = single_df['Close']
@@ -289,7 +298,7 @@ def get_market_cap_and_rs(ticker_info_list, limit=None, progress_callback=None):
                         except:
                             time.sleep(1)
                             pass
-                        time.sleep(1) 
+                        time.sleep(2) # Increased wait between retries 
                 
                 if pd.isna(cur_price) or pd.isna(prev_price) or prev_price == 0:
                     print(f"Skipping {t}: No price data")
