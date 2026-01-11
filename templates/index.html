@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RS Scanner (US)</title>
+    <title>Lee's RS Scanner (Client-Side)</title>
     <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.png') }}">
     <style>
         :root {
@@ -180,19 +180,19 @@
         <h1>Lee's RS Scanner (US)</h1>
 
         <div class="info-box">
-            <p>1. <strong>상대 강도(RS)</strong>: 최근 60영업일 동안의 (개별주가 변동률 / QQQ 변동률) - 1<br>
-                2. <strong>시가총액</strong>: 현재 주가 × 발행주식수 (실시간 계산)<br>
-                3. <strong>데이터 출처</strong>: 'RS분석툴.xlsm' 파일의 티커 목록을 기반으로 Yahoo Finance에서 수집합니다.</p>
-            <p class="highlight-danger">⚠️ 주의: 1000개 조회 시 약 1-2분 소요될 수 있습니다. (배치 처리 중)</p>
+            <p>1. <strong>Solution</strong>: Vercel IP 차단을 피해 <strong>브라우저에서 직접 야후 데이터를 수집</strong>합니다.<br>
+                2. <strong>Proxy</strong>: CORS 문제를 해결하기 위해 공용 프록시(corsproxy.io)를 사용합니다.<br>
+                3. <strong>Data</strong>: 실시간 주가 차트(v8/chart)와 주식 수(v10/quoteSummary)를 결합하여 계산합니다.</p>
+            <p class="highlight-danger">⚠️ 주의: 브라우저가 직접 통신하므로 너무 빠른 반복 요청은 자제해주세요.</p>
         </div>
 
-        <button id="search-btn" onclick="startBatchSearch()">🔍 조회하기</button>
+        <button id="search-btn" onclick="startClientSideSearch()">🔍 조회하기</button>
 
         <div id="loading-ui">
             <div class="spinner"></div>
-            <p>데이터 스캔 중입니다... <span id="progress-percent"
+            <p>브라우저가 열심히 데이터를 모으고 있습니다... <span id="progress-percent"
                     style="font-weight:bold; color:var(--primary-color);">0%</span></p>
-            <p id="progress-detail" style="font-size:12px; color:#888; margin-top:5px;">(초기화 중...)</p>
+            <p id="progress-detail" style="font-size:12px; color:#888; margin-top:5px;">(준비 중...)</p>
         </div>
 
         <div id="result-area">
@@ -225,9 +225,13 @@
     <script>
         let globalData = [];
         let sortDir = { key: '', asc: true };
-        const BATCH_SIZE = 20;
+        const BATCH_SIZE = 5; // 브라우저 부하 관리용
+        const DELAY_BETWEEN_BATCHES = 500; // ms
 
-        async function startBatchSearch() {
+        // PROXY URL (Public CORS Proxy)
+        const PROXY_BASE = "https://corsproxy.io/?url=";
+
+        async function startClientSideSearch() {
             const btn = document.getElementById('search-btn');
             const loader = document.getElementById('loading-ui');
             const area = document.getElementById('result-area');
@@ -242,87 +246,188 @@
             rCount.innerText = "";
 
             try {
-                // 1. 전체 티커 가져오기
+                // 1. Get Tickers from Server (Excel)
                 pDetail.innerText = "티커 리스트 로딩 중...";
                 const resInit = await fetch('/api/tickers');
                 if (!resInit.ok) throw new Error("서버 연결 실패 (Tickers)");
-
                 const jsonInit = await resInit.json();
-
-                if (jsonInit.status !== 'success') {
-                    throw new Error("티커 로드 실패: " + jsonInit.message);
-                }
+                if (jsonInit.status !== 'success') throw new Error(jsonInit.message);
 
                 const allItems = jsonInit.data;
                 const total = allItems.length;
 
                 if (total === 0) {
-                    alert("서버에서 티커를 하나도 읽지 못했습니다! 엑셀 파일 문제일 수 있습니다.");
+                    alert("티커가 없습니다.");
                     resetUI(btn, loader);
                     return;
                 }
 
-                // 2. 배치 처리 루프
-                let failCount = 0;
+                // 2. Fetch QQQ Benchmark First
+                pDetail.innerText = "벤치마크(QQQ) 데이터 수집 중...";
+                const qqqData = await fetchYahooChart("QQQ");
+                if (!qqqData || qqqData.length < 60) {
+                    throw new Error("QQQ 데이터를 가져올 수 없어 RS 계산이 불가능합니다.");
+                }
+                const qqqPerf = calculatePerformance(qqqData);
+                console.log("QQQ Performance:", qqqPerf);
+
+                // 3. Loop Tickers
+                let processed = 0;
+                let success = 0;
+
                 for (let i = 0; i < total; i += BATCH_SIZE) {
                     const batch = allItems.slice(i, i + BATCH_SIZE);
-                    pDetail.innerText = `스캔 중... (${i + 1} ~ ${Math.min(i + BATCH_SIZE, total)} / ${total})`;
+                    pDetail.innerText = `데이터 수집 중... (${i + 1} ~ ${Math.min(i + BATCH_SIZE, total)} / ${total})`;
 
-                    try {
-                        const resBatch = await fetch('/api/batch_screen', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ items: batch })
-                        });
+                    // Parallel fetch for batch
+                    const batchPromises = batch.map(async (item) => {
+                        try {
+                            const ticker = item.Ticker;
+                            // Fetch Price & Shares
+                            const [priceData, shares] = await Promise.all([
+                                fetchYahooChart(ticker),
+                                fetchYahooShares(ticker)
+                            ]);
 
-                        if (!resBatch.ok) {
-                            console.warn("Batch failed HTTP:", resBatch.status);
-                            failCount++;
-                            continue;
+                            if (!priceData || priceData.length < 60) return null;
+
+                            const itemPerf = calculatePerformance(priceData);
+                            const currentPrice = priceData[priceData.length - 1].close;
+
+                            // RS Calculation
+                            // RS = ((Stock % Chg) / (QQQ % Chg)) - 1
+                            let rs = 0;
+                            if (qqqPerf !== 0) {
+                                rs = (itemPerf / qqqPerf) - 1;
+                            }
+
+                            // Market Cap
+                            // Ensure shares is valid, fallback if needed
+                            const finalShares = shares || 0;
+                            const mcap = currentPrice * finalShares;
+
+                            return {
+                                Ticker: ticker,
+                                Price: currentPrice,
+                                RS: rs,
+                                MarketCap: mcap,
+                                Shares: finalShares,
+                                Sector: item.Sector,
+                                Industry: item.Industry
+                            };
+
+                        } catch (err) {
+                            console.warn(`Failed ${item.Ticker}:`, err);
+                            return null;
                         }
+                    });
 
-                        const jsonBatch = await resBatch.json();
+                    const results = await Promise.all(batchPromises);
 
-                        if (jsonBatch.status === 'success') {
-                            globalData = globalData.concat(jsonBatch.results);
-                        } else {
-                            console.warn("Batch error:", jsonBatch.message);
-                            failCount++;
-                        }
-                    } catch (err) {
-                        console.error("Batch Request Error:", err);
-                        failCount++;
-                    }
+                    // Filter nulls
+                    const validResults = results.filter(r => r !== null);
+                    globalData = globalData.concat(validResults);
+                    success += validResults.length;
+                    processed += batch.length;
 
-                    // 진행률 업데이트
-                    const progress = Math.min(100, Math.round(((i + batch.length) / total) * 100));
+                    // Update UI
+                    const progress = Math.min(100, Math.round((processed / total) * 100));
                     pPercent.innerText = progress + '%';
+
+                    // Delay to be nice to the API/Proxy
+                    await new Promise(r => setTimeout(r, DELAY_BETWEEN_BATCHES));
                 }
 
-                // 3. 최종 처리
-                pDetail.innerText = "순위 계산 및 정렬 중...";
+                // 4. Finalize
+                pDetail.innerText = "순위 계산 중...";
                 calculateRanksAndSort();
                 renderTable(globalData);
 
-                rCount.innerText = `총 ${globalData.length}개 검색됨 (대상: ${total}개)`;
-                if (failCount > 0) {
-                    rCount.innerText += ` | ⚠️ ${failCount}개 배치 실패`;
-                }
+                rCount.innerText = `총 ${globalData.length}개 성공 (시도: ${total}개)`;
 
                 loader.style.display = 'none';
                 area.style.display = 'block';
                 btn.innerText = '✅ 조회 완료 (다시 조회)';
                 btn.disabled = false;
 
-                if (globalData.length === 0 && total > 0) {
-                    alert("데이터 조회 결과가 0건입니다.\nVercel 서버 IP가 Yahoo Finance에 의해 차단되었을 가능성이 높습니다.\n잠시 후 다시 시도하거나 로컬에서 실행해주세요.");
-                }
-
             } catch (e) {
                 console.error(e);
                 alert('오류 발생: ' + e.message);
                 resetUI(btn, loader);
             }
+        }
+
+        // --- Yahoo Finance Helper (Client-Side) ---
+
+        // 1. Fetch Chart (Price History)
+        async function fetchYahooChart(ticker) {
+            // v8 chart endpoint
+            const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=3mo`;
+            const proxyUrl = PROXY_BASE + encodeURIComponent(url);
+
+            try {
+                const res = await fetch(proxyUrl);
+                if (!res.ok) return null;
+                const json = await res.json();
+                const result = json.chart.result[0];
+
+                if (!result || !result.timestamp || !result.indicators.quote[0].adjclose) return null;
+
+                const timestamps = result.timestamp;
+                const adjCloses = result.indicators.quote[0].adjclose; // or close
+
+                // Zip into usable format
+                const data = [];
+                for (let i = 0; i < timestamps.length; i++) {
+                    if (adjCloses[i]) {
+                        data.push({ date: timestamps[i], close: adjCloses[i] });
+                    }
+                }
+                return data;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        // 2. Fetch Shares Outstanding (Quote Summary)
+        async function fetchYahooShares(ticker) {
+            // v10 quoteSummary endpoint
+            const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=defaultKeyStatistics`;
+            const proxyUrl = PROXY_BASE + encodeURIComponent(url);
+
+            try {
+                const res = await fetch(proxyUrl);
+                if (!res.ok) return 0;
+                const json = await res.json();
+                const result = json.quoteSummary.result[0];
+
+                const shares = result.defaultKeyStatistics.sharesOutstanding.raw;
+                return shares || 0;
+            } catch (e) {
+                // Fallback attempt? maybe just return 0
+                return 0;
+            }
+        }
+
+        function calculatePerformance(data) {
+            if (data.length < 60) return 0;
+            const current = data[data.length - 1].close;
+            const prev = data[data.length - 1 - 60].close; // approx 3 months ago (60 trading days)? 
+            // 3mo range is ~60-65 days. 
+            // Yahoo chart data length might vary. 
+            // Let's use the first available point if less than 60, but typically we want 60 days back.
+            // Or simpler: just use start vs end of 3mo? 
+            // The requirement is "60-day % change". 
+            // If we strictly need 60 bars ago:
+
+            let lookbackIdx = data.length - 1 - 60;
+            if (lookbackIdx < 0) lookbackIdx = 0; // fallback logic
+
+            const startPrice = data[lookbackIdx].close;
+            const endPrice = data[data.length - 1].close;
+
+            if (startPrice === 0) return 0;
+            return (endPrice / startPrice);
         }
 
         function resetUI(btn, loader) {
