@@ -156,55 +156,55 @@ def get_market_cap_and_rs(ticker_info_list, limit=None, progress_callback=None):
         ticker_info_list = ticker_info_list[:limit]
 
     tickers = [item['Ticker'] for item in ticker_info_list]
+    # Filter out invalid tickers explicitly
+    tickers = [t for t in tickers if t not in ['TICKER', 'SYMBOL', 'CODE', '종목코드', '티커', 'NAN', 'N/A']]
+    
     # 빠른 조회를 위해 Map 생성
-    base_info_map = {item['Ticker']: item for item in ticker_info_list}
+    base_info_map = {item['Ticker']: item for item in ticker_info_list if item['Ticker'] in tickers}
 
     print(f"Fetching price data for {len(tickers)} tickers...")
     if progress_callback: progress_callback(5)
     
     # 1. Price Bulk Download
     search_tickers = tickers + ["QQQ"]
-    # yfinance 0.2.40+ handles limits internally, but for safety
+    data = pd.DataFrame()
+    
     try:
+        # yfinance download
         data = yf.download(search_tickers, period="6mo", progress=True, threads=True)
     except Exception as e:
-        print(f"Error downloading price data: {e}")
-        return []
+        print(f"Bulk download failed: {e}")
+        data = pd.DataFrame()
 
-    if data.empty:
-        return []
+    # Fallback: Bulk download가 실패했거나 비어있으면 개별 처리 시도 (또는 데이터가 비어있음)
+    # 하지만 개별 처리는 아래 Loop에서 이미 Metadata/Shares와 함께 처리할 수 있음.
+    # 여기서는 'closes' DataFrame을 만드는 것이 목표.
     
-    if progress_callback: progress_callback(30)
-
-    # 컬럼 처리 (Adj Close 우선)
-    if 'Adj Close' in data.columns:
-        closes = data['Adj Close']
-    elif 'Close' in data.columns:
-        closes = data['Close']
-    else:
-        # MultiIndex 구조 처리
-        try: closes = data.xs('Adj Close', axis=1, level=0)
-        except: closes = data
-
-    if len(closes) < 30: # 데이터가 너무 적으면 스킵
-        raise ValueError("Not enough historical data.")
-
-    latest = closes.iloc[-1]
-    # 60일 전 가격 (없으면 가장 오래된 값)
-    prev_60_idx = -61 if len(closes) >= 61 else 0
-    prev_60 = closes.iloc[prev_60_idx]
-
-    # QQQ Benchmark
-    q_cur = latest.get("QQQ", 0)
-    q_prev = prev_60.get("QQQ", 0)
-    q_chg = (q_cur / q_prev) if q_prev != 0 else 0
+    closes = pd.DataFrame()
+    use_bulk_data = False
+    
+    if not data.empty:
+        try:
+            if 'Adj Close' in data.columns:
+                closes = data['Adj Close']
+            elif 'Close' in data.columns:
+                closes = data['Close']
+            else:
+                 # MultiIndex 구조 처리
+                try: closes = data.xs('Adj Close', axis=1, level=0)
+                except: closes = data
+            use_bulk_data = True
+        except:
+            use_bulk_data = False
+            
+    if not use_bulk_data or len(closes) < 30:
+        print("⚠️ Bulk data unavailable or insufficient. Switching to sequential price fetch.")
+        # closes가 비어있으므로, 아래 개별 루프에서 가격까지 같이 가져와야 함.
+        pass
 
     results = []
     
-    print("Fetching component details (Shares & Metadata)...")
-    
-    # 2. 개별 종목 상세 정보 조회 (순차 처리 or 소수 병렬)
-    # utils 함수 내에서는 병렬 처리를 위한 executor 구성을 유연하게
+    print("Fetching component details...")
     
     tasks = []
     # 현재 설정: 안전제일 (순차 처리 권장)
@@ -213,20 +213,109 @@ def get_market_cap_and_rs(ticker_info_list, limit=None, progress_callback=None):
     processed_count = 0
     total_count = len(tickers)
     
+    # QQQ Benchmark 따로 가져오기 (Bulk 실패 시)
+    q_chg = 0
+    if not use_bulk_data:
+        try:
+            q_hist = yf.Ticker("QQQ").history(period="6mo")
+            if not q_hist.empty:
+                q_cur = q_hist['Close'].iloc[-1]
+                q_prev = q_hist['Close'].iloc[-61] if len(q_hist) >= 61 else q_hist['Close'].iloc[0]
+                q_chg = (q_cur / q_prev) if q_prev != 0 else 0
+        except: pass
+    else:
+         # 이미 계산된 로직 사용을 위해 locals에 있는 데이터 활용해야 하는데
+         # 위 로직이 분리됨. 재계산 필요.
+         latest = closes.iloc[-1]
+         prev_60_idx = -61 if len(closes) >= 61 else 0
+         prev_60 = closes.iloc[prev_60_idx]
+         
+         q_cur = latest.get("QQQ", 0)
+         q_prev = prev_60.get("QQQ", 0)
+         q_chg = (q_cur / q_prev) if q_prev != 0 else 0
+    
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        # Submit tasks
         future_to_ticker = {}
         for t in tickers:
             # 구글 시트에서 가져온 기본 정보
             base = base_info_map.get(t, {})
             current_sec = base.get('Sector', 'N/A')
             current_ind = base.get('Industry', 'N/A')
-            
-            # 메타데이터가 N/A면 API에서 가져오도록 요청 (need_metadata=True)
             need_meta = (current_sec == 'N/A' or current_ind == 'N/A')
             
+            # Future에는 티커와 메타 필요 여부만 전달
             future = executor.submit(get_ticker_details, t, need_meta)
             future_to_ticker[future] = t
+
+        for future in concurrent.futures.as_completed(future_to_ticker):
+            t = future_to_ticker[future]
+            try:
+                # 결과: shares, sector, industry
+                # get_ticker_details를 수정하지 않았으므로 리턴값 확인 필요
+                # 앞서 우리는 get_ticker_details가 (ticker, shares, sector, industry)를 리턴하게 바꿨음
+                _, share_count, fetched_sec, fetched_ind = future.result()
+                
+                processed_count += 1
+                if progress_callback:
+                    current_progress = 30 + int((processed_count / total_count) * 60)
+                    progress_callback(current_progress)
+
+                # 가격 데이터 확인
+                cur_price = 0
+                prev_price = 0
+                
+                if use_bulk_data:
+                    # Bulk 데이터 사용
+                    try:
+                        cur_price = float(closes[t].iloc[-1])
+                        # 60일 전 (안전하게 인덱싱)
+                        prev_60_idx = -61 if len(closes) >= 61 else 0
+                        prev_price = float(closes[t].iloc[prev_60_idx])
+                    except:
+                        # Bulk에 없으면 개별 조회 시도 (Fallback)
+                        pass
+                
+                # Bulk에 없거나 실패했으면 개별 조회
+                if cur_price == 0 or prev_price == 0:
+                    try:
+                        t_obj = yf.Ticker(t)
+                        hist = t_obj.history(period="6mo")
+                        if not hist.empty:
+                            cur_price = hist['Close'].iloc[-1]
+                            p_idx = -61 if len(hist) >= 61 else 0
+                            prev_price = hist['Close'].iloc[p_idx]
+                    except:
+                        pass # 그래도 없으면 실패
+                
+                if pd.isna(cur_price) or pd.isna(prev_price) or prev_price == 0:
+                    print(f"Skipping {t}: No price data")
+                    continue
+                
+                # RS 계산
+                chg = cur_price / prev_price
+                rs = (chg / q_chg) - 1 if q_chg != 0 else 0
+                
+                # Market Cap
+                mcap = cur_price * share_count
+                
+                # 메타데이터 병합
+                base = base_info_map.get(t, {})
+                final_sec = fetched_sec if fetched_sec and fetched_sec != 'N/A' else base.get('Sector', 'N/A')
+                final_ind = fetched_ind if fetched_ind and fetched_ind != 'N/A' else base.get('Industry', 'N/A')
+                
+                results.append({
+                    "Ticker": t,
+                    "Price": round(float(cur_price), 2),
+                    "RS": round(float(rs), 4),
+                    "MarketCap": round(float(mcap), 0),
+                    "Shares": share_count,
+                    "Sector": final_sec,
+                    "Industry": final_ind
+                })
+                
+            except Exception as e:
+                print(f"Error processing {t}: {e}")
+                continue
 
         for future in concurrent.futures.as_completed(future_to_ticker):
             t = future_to_ticker[future]
