@@ -122,6 +122,23 @@ def main():
         os.makedirs('static')
 
     ticker_info_list = get_tickers_from_excel(SOURCE_EXCEL_FILE)
+    
+    if not ticker_info_list:
+        print("⚠️ 엑셀 파일 로드 실패 또는 데이터 없음! (Fallback 모드로 진입합니다)")
+        # 주요 나스닥/S&P500 티커 Fallback
+        ticker_info_list = [
+            {"Ticker": "AAPL", "Sector": "Technology", "Industry": "Consumer Electronics"},
+            {"Ticker": "MSFT", "Sector": "Technology", "Industry": "Software - Infrastructure"},
+            {"Ticker": "NVDA", "Sector": "Technology", "Industry": "Semiconductors"},
+            {"Ticker": "GOOGL", "Sector": "Communication Services", "Industry": "Internet Content & Information"},
+            {"Ticker": "AMZN", "Sector": "Consumer Cyclical", "Industry": "Internet Retail"},
+            {"Ticker": "TSLA", "Sector": "Consumer Cyclical", "Industry": "Auto Manufacturers"},
+            {"Ticker": "META", "Sector": "Communication Services", "Industry": "Internet Content & Information"},
+            {"Ticker": "AMD", "Sector": "Technology", "Industry": "Semiconductors"},
+            {"Ticker": "NFLX", "Sector": "Communication Services", "Industry": "Entertainment"},
+            {"Ticker": "PLTR", "Sector": "Technology", "Industry": "Software - Infrastructure"}
+        ]
+    
     # 실제 운영 시 제한 해제
     # ticker_info_list = ticker_info_list[:100] 
     

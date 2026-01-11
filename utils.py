@@ -10,7 +10,7 @@ def get_tickers_from_excel(file_path="RS분석툴.xlsm"):
     반환값: [{'Ticker': 'AAPL', 'Sector': 'Technoloy', 'Industry': 'Consumer Electronics'}, ...]
     """
     try:
-        df = pd.read_excel(file_path, sheet_name=0)
+        df = pd.read_excel(file_path, sheet_name=0, engine='openpyxl')
         # 필요한 컬럼만 추출/확인
         result_list = []
         
