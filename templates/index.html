@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lee's RS Scanner (Client-Side)</title>
+    <title>Lee's RS Scanner (Daily)</title>
     <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.png') }}">
     <style>
         :root {
@@ -37,6 +37,12 @@
         }
 
         h1 {
+            margin-bottom: 20px;
+        }
+
+        .subtitle {
+            color: #888;
+            font-size: 14px;
             margin-bottom: 30px;
         }
 
@@ -50,11 +56,6 @@
             font-size: 14px;
             color: var(--text-secondary);
             line-height: 1.6;
-        }
-
-        .highlight-danger {
-            color: var(--danger-color);
-            font-weight: bold;
         }
 
         button {
@@ -73,47 +74,6 @@
             transform: translateY(-2px);
         }
 
-        button:disabled {
-            background-color: #555;
-            cursor: not-allowed;
-        }
-
-        #loading-ui {
-            display: none;
-            margin-top: 30px;
-        }
-
-        .spinner {
-            border: 4px solid #333;
-            border-top-color: var(--primary-color);
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 15px;
-        }
-
-        @keyframes spin {
-            100% {
-                transform: rotate(360deg);
-            }
-        }
-
-        #debug-log {
-            width: 100%;
-            height: 100px;
-            background-color: #000;
-            color: #0f0;
-            font-family: monospace;
-            font-size: 11px;
-            text-align: left;
-            padding: 10px;
-            margin-top: 10px;
-            border: 1px solid #333;
-            overflow-y: scroll;
-            display: none;
-        }
-
         #result-area {
             display: none;
             margin-top: 40px;
@@ -121,8 +81,8 @@
 
         .btn-group {
             display: flex;
-            justify-content: flex-end;
-            gap: 10px;
+            justify-content: space-between;
+            align-items: center;
             margin-bottom: 15px;
         }
 
@@ -192,30 +152,21 @@
 <body>
 
     <div class="container">
-        <h1>Lee's RS Scanner (Client-Side)</h1>
+        <h1>🇺🇸 Lee's RS Scanner</h1>
+        <p class="subtitle" id="last-updated">업데이트 확인 중...</p>
 
         <div class="info-box">
-            <p>1. <strong>Solution</strong>: Vercel IP 차단을 피해 <strong>브라우저에서 직접 야후 데이터를 수집</strong>합니다.<br>
-                2. <strong>Proxy</strong>: CORS 문제를 해결하기 위해 공용 프록시(corsproxy.io 등)를 순차적으로 시도합니다.<br>
-                3. <strong>Data</strong>: 실시간 주가 차트(v8/chart)와 주식 수(v10/quoteSummary)를 결합하여 계산합니다.</p>
-            <p class="highlight-danger">⚠️ 주의: 브라우저가 직접 통신하므로 너무 빠른 반복 요청은 자제해주세요.</p>
+            <p>1. <strong>일일 자동 업데이트</strong>: 매일 미국 장 마감 후 서버가 자동으로 데이터를 갱신합니다.<br>
+                2. <strong>RS 계산</strong>: ((개별종목 60일 변동률 / QQQ 60일 변동률) - 1)<br>
+                3. <strong>시가총액</strong>: 주가 × 발행주식수</p>
         </div>
 
-        <button id="search-btn" onclick="startClientSideSearch()">🔍 조회하기</button>
-
-        <div id="loading-ui">
-            <div class="spinner"></div>
-            <p>브라우저가 열심히 데이터를 모으고 있습니다... <span id="progress-percent"
-                    style="font-weight:bold; color:var(--primary-color);">0%</span></p>
-            <p id="progress-detail" style="font-size:12px; color:#888; margin-top:5px;">(준비 중...)</p>
-            <div id="debug-log"></div>
-        </div>
+        <button id="load-btn" onclick="loadData()">📄 최신 리포트 불러오기</button>
 
         <div id="result-area">
             <div class="btn-group">
-                <span id="result-count"
-                    style="margin-right:15px; align-self:center; font-size:14px; color:#aaa;"></span>
-                <a onclick="downloadExcel()" class="download-btn">📥 엑셀 다운로드</a>
+                <span id="result-count" style="font-size:14px; color:#aaa;"></span>
+                <button onclick="downloadExcel()" class="download-btn">📥 엑셀 다운로드</button>
             </div>
 
             <table>
@@ -238,295 +189,64 @@
         RS scanner © 2026 | Idea by In-gyu Lee | Built by Dae-sik Min
     </footer>
 
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
     <script>
         let globalData = [];
-        let sortDir = { key: '', asc: true };
-        const BATCH_SIZE = 5;
-        const DELAY_BETWEEN_BATCHES = 500;
+        let sortDir = { key: 'RS', asc: false };
 
-        // PROXY LIST (강력한 프록시 추가)
-        const PROXIES = [
-            "https://api.allorigins.win/raw?url=",
-            "https://corsproxy.io/?url=",
-            "https://api.codetabs.com/v1/proxy?quest="
-        ];
-
-        function log(msg) {
-            const d = document.getElementById('debug-log');
-            d.style.display = 'block';
-            d.innerHTML += `<div>[${new Date().toLocaleTimeString()}] ${msg}</div>`;
-            d.scrollTop = d.scrollHeight;
-            console.log(msg);
-        }
-
-        async function fetchWithProxy(targetUrl) {
-            let lastError = null;
-            for (const proxyBase of PROXIES) {
-                try {
-                    const proxyUrl = proxyBase + encodeURIComponent(targetUrl);
-                    // log(`Try Proxy: ${proxyBase}`);
-                    const res = await fetch(proxyUrl);
-                    if (res.ok) return res;
-                    // log(`Failed ${proxyBase}: ${res.status}`);
-                } catch (e) {
-                    lastError = e;
-                    // log(`Error ${proxyBase}: ${e.message}`);
-                }
-            }
-            return null;
-        }
-
-        async function startClientSideSearch() {
-            const btn = document.getElementById('search-btn');
-            const loader = document.getElementById('loading-ui');
-            const area = document.getElementById('result-area');
-            const pPercent = document.getElementById('progress-percent');
-            const pDetail = document.getElementById('progress-detail');
-            const rCount = document.getElementById('result-count');
-            const debugDiv = document.getElementById('debug-log');
-
+        async function loadData() {
+            const btn = document.getElementById('load-btn');
             btn.disabled = true;
-            loader.style.display = 'block';
-            debugDiv.innerHTML = "<div>=== Start Log ===</div>"; // 초기화
-            area.style.display = 'none';
-            globalData = [];
-            rCount.innerText = "";
+            btn.innerText = "데이터 로딩 중...";
 
             try {
-                // 1. Get Tickers
-                pDetail.innerText = "티커 리스트 로딩 중...";
-                const resInit = await fetch('/api/tickers');
-                if (!resInit.ok) throw new Error("서버 연결 실패 (Tickers)");
-                const jsonInit = await resInit.json();
-                if (jsonInit.status !== 'success') throw new Error(jsonInit.message);
+                // 정적 JSON 파일 로드
+                const res = await fetch('/data/result.json?t=' + new Date().getTime());
 
-                const allItems = jsonInit.data;
-                const total = allItems.length;
-
-                if (total === 0) {
-                    alert("티커가 없습니다.");
-                    resetUI(btn, loader);
-                    return;
+                if (!res.ok) {
+                    // 아직 파일이 생성되지 않았을 때
+                    throw new Error("아직 생성된 데이터 파일이 없습니다. (GitHub Actions가 실행 중일 수 있습니다)");
                 }
 
-                // 2. Fetch QQQ
-                pDetail.innerText = "벤치마크(QQQ) 데이터 수집 중... (프록시 확인)";
-                log("Fetching QQQ data...");
+                const json = await res.json();
+                globalData = json.data;
 
-                let qqqData = null;
-                try {
-                    qqqData = await fetchYahooChart("QQQ");
-                } catch (err) {
-                    log("QQQ fetch fatal error: " + err.message);
+                // 업데이트 시간 표시
+                if (json.last_updated) {
+                    document.getElementById('last-updated').innerText = `Last Updated: ${json.last_updated}`;
                 }
 
-                if (!qqqData || qqqData.length < 50) {
-                    log("QQQ fail. Retrying...");
-                    // Retry once more
-                    qqqData = await fetchYahooChart("QQQ");
-                }
-
-                if (!qqqData || qqqData.length < 50) {
-                    throw new Error("QQQ 데이터를 모든 프록시에서 가져오지 못했습니다. 잠시 후 다시 시도하거나 프록시 상태를 확인해주세요.");
-                }
-                log(`QQQ Data OK. Points: ${qqqData.length}`);
-
-                const qqqPerf = calculatePerformance(qqqData);
-                log(`QQQ Perf: ${qqqPerf.toFixed(4)}`);
-
-                // 3. Loop Tickers
-                let processed = 0;
-                let success = 0;
-
-                for (let i = 0; i < total; i += BATCH_SIZE) {
-                    const batch = allItems.slice(i, i + BATCH_SIZE);
-                    pDetail.innerText = `데이터 수집 중... (${i + 1} ~ ${Math.min(i + BATCH_SIZE, total)} / ${total})`;
-
-                    const batchPromises = batch.map(async (item) => {
-                        try {
-                            const ticker = item.Ticker;
-                            const [priceData, shares] = await Promise.all([
-                                fetchYahooChart(ticker),
-                                fetchYahooShares(ticker)
-                            ]);
-
-                            if (!priceData || priceData.length < 50) return null;
-
-                            const itemPerf = calculatePerformance(priceData);
-                            const currentPrice = priceData[priceData.length - 1].close;
-
-                            let rs = 0;
-                            if (qqqPerf !== 0) {
-                                rs = (itemPerf / qqqPerf) - 1;
-                            }
-
-                            const finalShares = shares || 0;
-                            const mcap = currentPrice * finalShares;
-
-                            return {
-                                Ticker: ticker,
-                                Price: currentPrice,
-                                RS: rs,
-                                MarketCap: mcap,
-                                Shares: finalShares,
-                                Sector: item.Sector,
-                                Industry: item.Industry
-                            };
-
-                        } catch (err) {
-                            return null;
-                        }
-                    });
-
-                    const results = await Promise.all(batchPromises);
-
-                    const validResults = results.filter(r => r !== null);
-                    globalData = globalData.concat(validResults);
-                    success += validResults.length;
-                    processed += batch.length;
-
-                    // Log progress occasionally
-                    if (processed % 20 === 0) log(`Processed ${processed}/${total}, Success: ${success}`);
-
-                    const progress = Math.min(100, Math.round((processed / total) * 100));
-                    pPercent.innerText = progress + '%';
-
-                    await new Promise(r => setTimeout(r, DELAY_BETWEEN_BATCHES));
-                }
-
-                // 4. Finalize
-                pDetail.innerText = "순위 계산 중...";
-                calculateRanksAndSort();
                 renderTable(globalData);
+                document.getElementById('result-count').innerText = `Total: ${globalData.length} Items`;
 
-                rCount.innerText = `총 ${globalData.length}개 성공 (시도: ${total}개)`;
+                document.getElementById('result-area').style.display = 'block';
+                btn.style.display = 'none'; // 로드 후 버튼 숨김
 
-                loader.style.display = 'none';
-                area.style.display = 'block';
-                btn.innerText = '✅ 조회 완료 (다시 조회)';
+            } catch (e) {
+                alert("데이터 로드 실패: " + e.message);
+                btn.innerText = "다시 시도";
                 btn.disabled = false;
-
-            } catch (e) {
-                console.error(e);
-                log("CRITICAL ERROR: " + e.message);
-                alert('오류 발생: ' + e.message + "\n(세부 내용은 로그 확인)");
-                resetUI(btn, loader);
             }
-        }
-
-        // --- Yahoo Finance Helper (Client-Side) ---
-
-        async function fetchYahooChart(ticker) {
-            // v8 endpoint
-            const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=3mo`;
-
-            try {
-                const res = await fetchWithProxy(url);
-                if (!res) return null;
-
-                const json = await res.json();
-
-                // Validate data structure
-                // Some proxies return { contents: "..." } (like allorigins sometimes, but raw should be direct)
-                // Let's check deep structure
-                let result = null;
-                if (json.chart && json.chart.result) {
-                    result = json.chart.result[0];
-                } else if (json.contents) {
-                    // Maybe double parsed?
-                    try {
-                        const inner = JSON.parse(json.contents);
-                        if (inner.chart && inner.chart.result) result = inner.chart.result[0];
-                    } catch (e) { }
-                }
-
-                if (!result || !result.timestamp || !result.indicators.quote[0].adjclose) return null;
-
-                const timestamps = result.timestamp;
-                const adjCloses = result.indicators.quote[0].adjclose;
-
-                const data = [];
-                for (let i = 0; i < timestamps.length; i++) {
-                    if (adjCloses[i]) {
-                        data.push({ date: timestamps[i], close: adjCloses[i] });
-                    }
-                }
-                return data;
-            } catch (e) {
-                return null;
-            }
-        }
-
-        async function fetchYahooShares(ticker) {
-            const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=defaultKeyStatistics`;
-
-            try {
-                const res = await fetchWithProxy(url);
-                if (!res) return 0;
-
-                const json = await res.json();
-
-                let result = null;
-                if (json.quoteSummary && json.quoteSummary.result) {
-                    result = json.quoteSummary.result[0];
-                } else if (json.contents) {
-                    try {
-                        const inner = JSON.parse(json.contents);
-                        if (inner.quoteSummary && inner.quoteSummary.result) result = inner.quoteSummary.result[0];
-                    } catch (e) { }
-                }
-
-                if (!result) return 0;
-
-                const shares = result.defaultKeyStatistics.sharesOutstanding.raw;
-                return shares || 0;
-            } catch (e) {
-                return 0;
-            }
-        }
-
-        function calculatePerformance(data) {
-            if (data.length < 50) return 0;
-            // ~60 days lookback
-            let lookbackIdx = data.length - 1 - 60;
-            if (lookbackIdx < 0) lookbackIdx = 0;
-
-            const startPrice = data[lookbackIdx].close;
-            const endPrice = data[data.length - 1].close;
-
-            if (startPrice === 0) return 0;
-            return (endPrice / startPrice);
-        }
-
-        function resetUI(btn, loader) {
-            // loader.style.display = 'none'; // Keep log visible on failure
-            btn.disabled = false;
-            btn.innerText = '🔍 조회하기';
-        }
-
-        function calculateRanksAndSort() {
-            globalData.sort((a, b) => b.RS - a.RS);
-            const sortedByMC = [...globalData].sort((a, b) => b.MarketCap - a.MarketCap);
-            const rankMap = {};
-            sortedByMC.forEach((item, idx) => {
-                rankMap[item.Ticker] = idx + 1;
-            });
-            globalData.forEach(item => {
-                item.MarketCapRank = rankMap[item.Ticker];
-            });
-            globalData.sort((a, b) => b.RS - a.RS);
         }
 
         function renderTable(data) {
             const tbody = document.getElementById('table-body');
             tbody.innerHTML = '';
+
+            // 랭크 계산 (시총 기준)
+            const sortedByMC = [...data].sort((a, b) => b.MarketCap - a.MarketCap);
+            const rankMap = {};
+            sortedByMC.forEach((item, idx) => rankMap[item.Ticker] = idx + 1);
+
             data.forEach(item => {
+                item.MarketCapRank = rankMap[item.Ticker];
+
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                 <td><strong>${item.Ticker}</strong></td>
                 <td>${Number(item.MarketCap).toLocaleString()}</td>
                 <td>${item.MarketCapRank}</td>
-                <td class="${item.RS > 0 ? 'rs-pos' : 'rs-neg'}">${item.RS.toFixed(4)}</td>
+                <td class="${item.RS > 0 ? 'rs-pos' : 'rs-neg'}">${Number(item.RS).toFixed(4)}</td>
                 <td>${item.Sector}</td>
                 <td>${item.Industry}</td>
             `;
@@ -541,6 +261,7 @@
             globalData.sort((a, b) => {
                 let valA = a[key];
                 let valB = b[key];
+
                 if (typeof valA === 'string') valA = valA.toUpperCase();
                 if (typeof valB === 'string') valB = valB.toUpperCase();
 
@@ -551,25 +272,28 @@
             renderTable(globalData);
         }
 
-        async function downloadExcel() {
+        function downloadExcel() {
             if (globalData.length === 0) return alert('데이터가 없습니다.');
-            try {
-                const res = await fetch('/api/create_excel', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ data: globalData })
-                });
-                const blob = await res.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `RS_Scanner_${new Date().toISOString().slice(0, 10)}.xlsx`;
-                document.body.appendChild(a);
-                a.click();
-                a.remove();
-            } catch (e) {
-                alert('다운로드 실패');
-            }
+
+            // SheetJS (xlsx.full.min.js) 활용하여 클라이언트에서 엑셀 생성
+            const wb = XLSX.utils.book_new();
+
+            // 컬럼 순서 조정용 복사본
+            const excelData = globalData.map(item => ({
+                Ticker: item.Ticker,
+                MarketCap: item.MarketCap,
+                MarketCapRank: item.MarketCapRank,
+                RS: item.RS,
+                Sector: item.Sector,
+                Industry: item.Industry,
+                Price: item.Price,
+                Shares: item.Shares
+            }));
+
+            const ws = XLSX.utils.json_to_sheet(excelData);
+            XLSX.utils.book_append_sheet(wb, ws, "RS_Scanner");
+
+            XLSX.writeFile(wb, `RS_Scanner_${new Date().toISOString().slice(0, 10)}.xlsx`);
         }
     </script>
 
