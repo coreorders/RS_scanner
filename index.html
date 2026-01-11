@@ -232,9 +232,23 @@
 
                 globalData = json.data;
 
-                // 업데이트 시간 표시
+                // 업데이트 시간 표시 (UTC + KST 변환)
                 if (json.last_updated) {
-                    document.getElementById('last-updated').innerText = `Last Updated: ${json.last_updated}`;
+                    try {
+                        // "YYYY-MM-DD HH:MM:SS UTC" 포맷을 ISO로 변환하여 Date 객체 생성
+                        const dateObj = new Date(json.last_updated.replace(' UTC', 'Z').replace(' ', 'T'));
+
+                        const kstStr = new Intl.DateTimeFormat('ko-KR', {
+                            timeZone: 'Asia/Seoul',
+                            year: 'numeric', month: '2-digit', day: '2-digit',
+                            hour: '2-digit', minute: '2-digit', second: '2-digit',
+                            hour12: false
+                        }).format(dateObj);
+
+                        document.getElementById('last-updated').innerText = `Last Updated: ${json.last_updated} / (KST: ${kstStr})`;
+                    } catch (e) {
+                        document.getElementById('last-updated').innerText = `Last Updated: ${json.last_updated}`;
+                    }
                 }
 
                 renderTable(globalData);
