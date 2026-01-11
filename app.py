@@ -6,6 +6,7 @@ import yfinance as yf
 import concurrent.futures
 import io
 import time
+import requests
 from utils import get_tickers_from_excel
 
 app = Flask(__name__)
@@ -48,7 +49,7 @@ def batch_screen():
         if not items:
             return jsonify({"status": "success", "results": []})
             
-        print(f"Processing batch of {len(items)} items...")
+        # print(f"Processing batch of {len(items)} items...") 
         results = calculate_batch(items)
         
         return jsonify({"status": "success", "results": results})
@@ -94,12 +95,22 @@ def create_excel():
     except Exception as e:
          return f"Excel creation failed: {str(e)}", 500
 
-# --- Helper Logic (moved from utils to here/inline or import) ---
-# utils.py 의 get_market_cap_and_rs 로직을 배치에 맞게 경량화
+# --- Helper Logic ---
+
+def get_session():
+    # Vercel IP 차단 우회용 세션 생성
+    session = requests.Session()
+    session.headers.update({
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+    })
+    return session
 
 def get_shares_outstanding(ticker):
     try:
-        t = yf.Ticker(ticker)
+        # Ticker 객체 생성 시 세션 주입 시도 (지원 버전에 따라 다를 수 있음)
+        # 하지만 fast_info는 내부적으로 호출하므로, 전역적인 우회는 어렵지만
+        # 일반적인 Ticker 호출은 괜찮음. 
+        t = yf.Ticker(ticker, session=get_session())
         return ticker, t.fast_info.get('shares', 0)
     except:
         return ticker, 0
@@ -115,8 +126,12 @@ def calculate_batch(items):
     download_list = tickers + ["QQQ"]
     
     try:
-        # threads=False로 설정하여 오버헤드 줄임 (배치가 작아서)
-        data = yf.download(download_list, period="6mo", progress=False, threads=True)
+        # 세션을 사용하여 다운로드 시도
+        session = get_session()
+        # threads=False로 설정하여 오버헤드 줄임.
+        # session 파라미터는 yfinance 최신 버전에서 지원. 
+        # 만약 지원하지 않는 구버전이라면 무시되지만, requirements.txt를 최신으로 하면 됨.
+        data = yf.download(download_list, period="6mo", progress=False, threads=True, session=session)
     except Exception as e:
         print(f"YF Download Error: {e}")
         return []
@@ -131,8 +146,8 @@ def calculate_batch(items):
     else:
         closes = data
         
+    # 데이터가 60일치 이상인지 확인
     if len(closes) < 61:
-        # 데이터 부족 시 빈 리스트 반환 (혹은 가능한 것만)
         return []
         
     latest = closes.iloc[-1]
@@ -146,9 +161,8 @@ def calculate_batch(items):
     # Shares (Parallel)
     shares_map = {}
     
-    # Vercel에서 ThreadPool이 문제를 일으킬 수도 있으니 (Resource limit),
-    # 실패하면 순차 처리하도록 하거나 max_workers를 줄임
     try:
+        # Vercel 리소스 제한 고려하여 워커 수 조정
         with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(tickers), 5)) as exc:
             future_to_t = {exc.submit(get_shares_outstanding, t): t for t in tickers}
             for f in concurrent.futures.as_completed(future_to_t):
@@ -158,7 +172,6 @@ def calculate_batch(items):
                 except:
                     pass
     except:
-        # Fallback if threading fails
         for t in tickers:
             _, s = get_shares_outstanding(t)
             shares_map[t] = s
