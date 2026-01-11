@@ -4438,5 +4438,21 @@
   "LRN": {
     "Sector": "Consumer Defensive",
     "Industry": "Education & Training Services"
+  },
+  "SHNY": {
+    "Sector": "N/A",
+    "Industry": "N/A"
+  },
+  "GDXU": {
+    "Sector": "N/A",
+    "Industry": "N/A"
+  },
+  "CPNG": {
+    "Sector": "Consumer Cyclical",
+    "Industry": "Internet Retail"
+  },
+  "DGP": {
+    "Sector": "N/A",
+    "Industry": "N/A"
   }
 }
