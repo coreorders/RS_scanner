@@ -1,122 +1,181 @@
 
-from flask import Flask, render_template, jsonify, send_file
+from flask import Flask, render_template, jsonify, request, send_file
 import pandas as pd
 import os
-import shutil
-from openpyxl import load_workbook
-from utils import get_tickers_from_excel, get_market_cap_and_rs
-import threading
-import time
+import yfinance as yf
+import concurrent.futures
 import io
+import time
+from utils import get_tickers_from_excel
 
 app = Flask(__name__)
 
-CACHE = {
-    "data": [],
-    "last_updated": None,
-    "is_loading": False,
-    "progress": 0
-}
-
+# 전역 캐시는 이제 큰 의미가 없지만(Stateless), 짧은 배치를 위해 남겨둠
+# Vercel은 요청 간 메모리 공유를 보장하지 않음.
 SOURCE_EXCEL_FILE = "RS분석툴.xlsm"
-LIMIT_FOR_TEST = 20 # Vercel 테스트용 제한
 
 @app.route('/')
 def index():
     return render_template('index.html')
 
-@app.route('/api/screen')
-def screen_stocks():
-    global CACHE
-    
-    if CACHE['is_loading']:
-        return jsonify({"status": "loading", "message": "이미 조회 중입니다..."})
-
-    CACHE['progress'] = 0 # Reset progress
-    
-    # Vercel 환경에서는 백그라운드 스레드가 불안정할 수 있으나,
-    # 20개 테스트 모드에서는 충분히 빠르거나, 사용자가 폴링하는 동안 살아있기를 기대함.
-    # 만약 Vercel 타임아웃 문제가 발생하면 동기 처리로 바꿔야 함.
-    thread = threading.Thread(target=fetch_data_background)
-    thread.start()
-    
-    return jsonify({"status": "started", "message": "데이터 수집을 시작했습니다."})
-
-@app.route('/api/status')
-def check_status():
-    global CACHE
-    state = {
-        "status": "idle",
-        "progress": CACHE.get('progress', 0)
-    }
-    
-    if CACHE['is_loading']:
-        state['status'] = 'loading'
-    elif CACHE['last_updated'] is None:
-        state['status'] = 'idle'
-    else:
-        state['status'] = 'done'
-        state['data'] = CACHE['data']
-        state['count'] = len(CACHE['data'])
-        
-    return jsonify(state)
-
-def fetch_data_background():
-    global CACHE
-    if CACHE['is_loading']:
-        return
-
-    CACHE['is_loading'] = True
+@app.route('/api/tickers')
+def get_all_tickers():
+    """
+    1. 엑셀에서 모든 티커 및 기본 정보 읽어서 반환
+    """
     try:
-        print("Starting background fetch...")
+        data = get_tickers_from_excel(SOURCE_EXCEL_FILE)
         
-        def update_progress(p):
-            CACHE['progress'] = p
-            print(f"Progress: {p}%")
+        # [TEST MODE] 100개로 제한
+        limit = 100
+        if len(data) > limit:
+            data = data[:limit]
+            
+        return jsonify({"status": "success", "data": data, "count": len(data)})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/batch_screen', methods=['POST'])
+def batch_screen():
+    """
+    2. 소규모 배치를 받아 RS 계산 후 반환 (Stateless)
+    Payload: { "tickers": [ {"Ticker": "AAPL", ...}, ... ] }
+    """
+    try:
+        req_data = request.json
+        items = req_data.get('items', [])
         
-        # 1. Excel에서 티커 및 정보 읽기
-        ticker_info_list = get_tickers_from_excel(SOURCE_EXCEL_FILE)
+        if not items:
+            return jsonify({"status": "success", "results": []})
+            
+        print(f"Processing batch of {len(items)} items...")
+        results = calculate_batch(items)
         
-        # 2. RS 및 시총 계산 (테스트 제한 적용)
-        # 이제 ticker_info_list(list of dict)를 넘김
-        results = get_market_cap_and_rs(ticker_info_list, limit=LIMIT_FOR_TEST, progress_callback=update_progress)
-        
-        CACHE['data'] = results
-        CACHE['last_updated'] = time.time()
-        print(f"Fetch complete. {len(results)} items.")
+        return jsonify({"status": "success", "results": results})
         
     except Exception as e:
-        print(f"Fetch failed: {e}")
-    finally:
-        CACHE['is_loading'] = False
+        print(f"Batch error: {e}")
+        return jsonify({"status": "error", "message": str(e)}), 500
 
-@app.route('/api/download/basic')
-def download_basic():
-    if not CACHE['data']:
-        return "데이터가 없습니다. 먼저 조회를 해주세요.", 400
+@app.route('/api/create_excel', methods=['POST'])
+def create_excel():
+    """
+    3. 클라이언트가 완성된 데이터 배열을 보내면 엑셀로 변환해서 다운로드 제공
+    Vercel은 파일 저장이 안 되므로, 받아서 바로 변환해 쏴줌.
+    Payload: { "data": [ ... ] }
+    """
+    try:
+        req_data = request.json
+        data_list = req_data.get('data', [])
         
-    df = pd.DataFrame(CACHE['data'])
-    # 컬럼 순서 조정: Ticker, MarketCap, MarketCapRank, RS, Sector, Industry
-    cols = ["Ticker", "MarketCap", "MarketCapRank", "RS", "Sector", "Industry", "Price"]
+        if not data_list:
+            return "No data provided", 400
+            
+        df = pd.DataFrame(data_list)
+        # 컬럼 순서 보장
+        cols = ["Ticker", "MarketCap", "MarketCapRank", "RS", "Sector", "Industry", "Price", "Shares"]
+        available_cols = [c for c in cols if c in df.columns]
+        df = df[available_cols]
+        
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False)
+        output.seek(0)
+        
+        filename = f"RS_Scanner_Result_{int(time.time())}.xlsx"
+        
+        return send_file(
+            output,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        
+    except Exception as e:
+         return f"Excel creation failed: {str(e)}", 500
+
+# --- Helper Logic (moved from utils to here/inline or import) ---
+# utils.py 의 get_market_cap_and_rs 로직을 배치에 맞게 경량화
+
+def get_shares_outstanding(ticker):
+    try:
+        t = yf.Ticker(ticker)
+        return ticker, t.fast_info.get('shares', 0)
+    except:
+        return ticker, 0
+
+def calculate_batch(items):
+    """
+    items: list of dict {'Ticker':..., 'Sector':...}
+    """
+    tickers = [x['Ticker'] for x in items]
+    info_map = {x['Ticker']: x for x in items}
     
-    # 존재하지 않는 컬럼 예외처리
-    available_cols = [c for c in cols if c in df.columns]
-    df = df[available_cols]
+    # 1. Price Bulk Download
+    # 배치 사이즈가 작으므로(20~50개) 금방 끝남
+    # QQQ는 매 배치마다 필요하므로 리스트에 추가
+    download_list = tickers + ["QQQ"]
     
-    # In-memory Excel creation for Vercel (Read-only FS compatibility)
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False)
-    output.seek(0)
+    # threads=False로 설정하여 오버헤드 줄임 (배치가 작아서)
+    data = yf.download(download_list, period="6mo", progress=False, threads=True)
     
-    filename = f"RS_Result_{int(time.time())}.xlsx"
+    if 'Adj Close' in data.columns:
+        closes = data['Adj Close']
+    elif 'Close' in data.columns:
+        closes = data['Close']
+    else:
+        closes = data
+        
+    if len(closes) < 61:
+        # 데이터 부족 시 빈 리스트 반환 (혹은 가능한 것만)
+        return []
+        
+    latest = closes.iloc[-1]
+    prev_60 = closes.iloc[-61]
     
-    return send_file(
-        output,
-        as_attachment=True,
-        download_name=filename,
-        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    )
+    # QQQ
+    q_cur = latest.get("QQQ", 0)
+    q_prev = prev_60.get("QQQ", 0)
+    q_chg = (q_cur / q_prev) if q_prev != 0 else 0
+    
+    # Shares (Parallel)
+    shares_map = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(tickers), 10)) as exc:
+        future_to_t = {exc.submit(get_shares_outstanding, t): t for t in tickers}
+        for f in concurrent.futures.as_completed(future_to_t):
+            t, s = f.result()
+            shares_map[t] = s
+            
+    results = []
+    for t in tickers:
+        try:
+            cur = latest.get(t, None)
+            prev = prev_60.get(t, None)
+            
+            if pd.isna(cur) or pd.isna(prev) or prev == 0:
+                continue
+                
+            chg = cur / prev
+            rs = (chg / q_chg) - 1 if q_chg != 0 else 0
+            
+            sh = shares_map.get(t, 0)
+            mcap = cur * sh
+            
+            base = info_map.get(t, {})
+            
+            results.append({
+                "Ticker": t,
+                "Price": round(cur, 2),
+                "RS": round(rs, 4),
+                "MarketCap": round(mcap, 0),
+                "Shares": sh,
+                "Sector": base.get("Sector", ""),
+                "Industry": base.get("Industry", "")
+            })
+        except:
+            continue
+            
+    return results
 
 if __name__ == '__main__':
     app.run(debug=True, port=8888)

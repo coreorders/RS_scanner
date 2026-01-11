@@ -30,12 +30,10 @@
 
         .container {
             width: 95%;
-            /* 더 넓게 */
-            max-width: 1200px;
+            max-width: 1400px;
             margin-top: 40px;
             text-align: center;
             flex-grow: 1;
-            /* Footer를 바닥으로 밀기 위함 */
         }
 
         h1 {
@@ -121,6 +119,7 @@
             border-radius: 4px;
             font-size: 14px;
             transition: 0.2s;
+            cursor: pointer;
         }
 
         .download-btn:hover {
@@ -132,13 +131,12 @@
             border-collapse: collapse;
             background-color: var(--surface-color);
             font-size: 13px;
-            /* 많은 컬럼을 위해 폰트 축소 */
         }
 
         th,
         td {
             text-align: left;
-            padding: 10px;
+            padding: 8px 12px;
             border-bottom: 1px solid var(--border-color);
         }
 
@@ -147,6 +145,8 @@
             user-select: none;
             background-color: #252525;
             color: var(--text-secondary);
+            position: sticky;
+            top: 0;
         }
 
         th:hover {
@@ -183,20 +183,21 @@
             <p>1. <strong>상대 강도(RS)</strong>: 최근 60영업일 동안의 (개별주가 변동률 / QQQ 변동률) - 1<br>
                 2. <strong>시가총액</strong>: 현재 주가 × 발행주식수 (실시간 계산)<br>
                 3. <strong>데이터 출처</strong>: 'RS분석툴.xlsm' 파일의 티커 목록을 기반으로 Yahoo Finance에서 수집합니다.</p>
-            <p class="highlight-danger">⚠️ 주의: 과도한 조회(시간당 2회 이상)는 IP 차단을 유발할 수 있습니다. (현재 테스트 모드: 20개 제한)</p>
+            <p class="highlight-danger">⚠️ 주의: 1000개 조회 시 약 1-2분 소요될 수 있습니다. (배치 처리 중)</p>
         </div>
 
-        <button id="search-btn" onclick="startSearch()">🔍 조회하기</button>
+        <button id="search-btn" onclick="startBatchSearch()">🔍 조회하기</button>
 
         <div id="loading-ui">
             <div class="spinner"></div>
-            <p>데이터 조회 중입니다... <span id="progress-percent"
+            <p>데이터 스캔 중입니다... <span id="progress-percent"
                     style="font-weight:bold; color:var(--primary-color);">0%</span></p>
+            <p id="progress-detail" style="font-size:12px; color:#888; margin-top:5px;">(초기화 중...)</p>
         </div>
 
         <div id="result-area">
             <div class="btn-group">
-                <a href="/api/download/basic" class="download-btn">📥 엑셀 다운로드</a>
+                <a onclick="downloadExcel()" class="download-btn">📥 엑셀 다운로드</a>
             </div>
 
             <table>
@@ -222,43 +223,91 @@
     <script>
         let globalData = [];
         let sortDir = { key: '', asc: true };
+        const BATCH_SIZE = 20; // 한 번에 처리할 개수
 
-        async function startSearch() {
-            document.getElementById('search-btn').disabled = true;
-            document.getElementById('loading-ui').style.display = 'block';
-            document.getElementById('progress-percent').innerText = '0%'; // Reset
-            document.getElementById('result-area').style.display = 'none';
+        async function startBatchSearch() {
+            const btn = document.getElementById('search-btn');
+            const loader = document.getElementById('loading-ui');
+            const area = document.getElementById('result-area');
+            const pPercent = document.getElementById('progress-percent');
+            const pDetail = document.getElementById('progress-detail');
+
+            btn.disabled = true;
+            loader.style.display = 'block';
+            area.style.display = 'none';
+            globalData = []; // 초기화
 
             try {
-                await fetch('/api/screen');
-                pollStatus();
+                // 1. 전체 티커 가져오기
+                pDetail.innerText = "티커 리스트 로딩 중...";
+                const resInit = await fetch('/api/tickers');
+                const jsonInit = await resInit.json();
+
+                if (jsonInit.status !== 'success') throw new Error(jsonInit.message);
+
+                const allItems = jsonInit.data; // [{Ticker, Sector...}, ...]
+                const total = allItems.length;
+
+                // 2. 배치 처리 루프
+                for (let i = 0; i < total; i += BATCH_SIZE) {
+                    const batch = allItems.slice(i, i + BATCH_SIZE);
+                    pDetail.innerText = `스캔 중... (${i + 1} ~ ${Math.min(i + BATCH_SIZE, total)} / ${total})`;
+
+                    const resBatch = await fetch('/api/batch_screen', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ items: batch })
+                    });
+                    const jsonBatch = await resBatch.json();
+
+                    if (jsonBatch.status === 'success') {
+                        globalData = globalData.concat(jsonBatch.results);
+                        // 부분 렌더링 (선택사항, 너무 자주하면 느려짐)
+                    }
+
+                    // 진행률 업데이트
+                    const progress = Math.min(100, Math.round(((i + batch.length) / total) * 100));
+                    pPercent.innerText = progress + '%';
+                }
+
+                // 3. 최종 처리 (순위 계산 등)
+                pDetail.innerText = "순위 계산 및 정렬 중...";
+                calculateRanksAndSort();
+                renderTable(globalData);
+
+                loader.style.display = 'none';
+                area.style.display = 'block';
+                btn.innerText = '✅ 조회 완료 (다시 조회)';
+                btn.disabled = false;
+
             } catch (e) {
-                alert('오류 발생');
-                resetUI();
+                console.error(e);
+                alert('오류 발생: ' + e.message);
+                loader.style.display = 'none';
+                btn.disabled = false;
             }
         }
 
-        function pollStatus() {
-            const interval = setInterval(async () => {
-                try {
-                    const res = await fetch('/api/status');
-                    const json = await res.json();
+        function calculateRanksAndSort() {
+            // RS 기준 내림차순 (기본)
+            globalData.sort((a, b) => b.RS - a.RS);
 
-                    // Update Progress
-                    if (json.progress !== undefined) {
-                        document.getElementById('progress-percent').innerText = json.progress + '%';
-                    }
+            // Market Cap Rank 계산
+            // 시총 기준 정렬해서 등수 매기고 다시 되돌리거나, 그냥 매김
+            // 복사본 정렬
+            const sortedByMC = [...globalData].sort((a, b) => b.MarketCap - a.MarketCap);
+            const rankMap = {};
+            sortedByMC.forEach((item, idx) => {
+                rankMap[item.Ticker] = idx + 1;
+            });
 
-                    if (json.status === 'done') {
-                        clearInterval(interval);
-                        globalData = json.data;
-                        renderTable(globalData);
-                        resetUI(true);
-                    }
-                } catch (e) {
-                    console.error(e);
-                }
-            }, 1000);
+            // 원래 데이터에 랭크 주입
+            globalData.forEach(item => {
+                item.MarketCapRank = rankMap[item.Ticker];
+            });
+
+            // 기본 뷰는 RS 내림차순 유지
+            globalData.sort((a, b) => b.RS - a.RS);
         }
 
         function renderTable(data) {
@@ -276,7 +325,6 @@
             `;
                 tbody.appendChild(tr);
             });
-            document.getElementById('result-area').style.display = 'block';
         }
 
         function sortTable(key) {
@@ -286,8 +334,6 @@
             globalData.sort((a, b) => {
                 let valA = a[key];
                 let valB = b[key];
-
-                // 숫자 처리
                 if (typeof valA === 'string') valA = valA.toUpperCase();
                 if (typeof valB === 'string') valB = valB.toUpperCase();
 
@@ -298,11 +344,27 @@
             renderTable(globalData);
         }
 
-        function resetUI(done = false) {
-            document.getElementById('loading-ui').style.display = 'none';
-            const btn = document.getElementById('search-btn');
-            btn.disabled = false;
-            if (done) btn.innerText = '✅ 조회 완료 (다시 조회)';
+        async function downloadExcel() {
+            if (globalData.length === 0) return alert('데이터가 없습니다.');
+
+            // Post current data to backend to generate excel
+            try {
+                const res = await fetch('/api/create_excel', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ data: globalData })
+                });
+                const blob = await res.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `RS_Scanner_${new Date().toISOString().slice(0, 10)}.xlsx`;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+            } catch (e) {
+                alert('다운로드 실패');
+            }
         }
     </script>
 
