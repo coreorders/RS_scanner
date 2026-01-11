@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RS Scanner</title>
+    <title>RS Scanner (US)</title>
     <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.png') }}">
     <style>
         :root {
@@ -177,7 +177,7 @@
 <body>
 
     <div class="container">
-        <h1>🇺🇸 Lee's RS Scanner</h1>
+        <h1>Lee's RS Scanner (US)</h1>
 
         <div class="info-box">
             <p>1. <strong>상대 강도(RS)</strong>: 최근 60영업일 동안의 (개별주가 변동률 / QQQ 변동률) - 1<br>
@@ -197,6 +197,8 @@
 
         <div id="result-area">
             <div class="btn-group">
+                <span id="result-count"
+                    style="margin-right:15px; align-self:center; font-size:14px; color:#aaa;"></span>
                 <a onclick="downloadExcel()" class="download-btn">📥 엑셀 다운로드</a>
             </div>
 
@@ -223,7 +225,7 @@
     <script>
         let globalData = [];
         let sortDir = { key: '', asc: true };
-        const BATCH_SIZE = 20; // 한 번에 처리할 개수
+        const BATCH_SIZE = 20;
 
         async function startBatchSearch() {
             const btn = document.getElementById('search-btn');
@@ -231,38 +233,65 @@
             const area = document.getElementById('result-area');
             const pPercent = document.getElementById('progress-percent');
             const pDetail = document.getElementById('progress-detail');
+            const rCount = document.getElementById('result-count');
 
             btn.disabled = true;
             loader.style.display = 'block';
             area.style.display = 'none';
-            globalData = []; // 초기화
+            globalData = [];
+            rCount.innerText = "";
 
             try {
                 // 1. 전체 티커 가져오기
                 pDetail.innerText = "티커 리스트 로딩 중...";
                 const resInit = await fetch('/api/tickers');
+                if (!resInit.ok) throw new Error("서버 연결 실패 (Tickers)");
+
                 const jsonInit = await resInit.json();
 
-                if (jsonInit.status !== 'success') throw new Error(jsonInit.message);
+                if (jsonInit.status !== 'success') {
+                    throw new Error("티커 로드 실패: " + jsonInit.message);
+                }
 
-                const allItems = jsonInit.data; // [{Ticker, Sector...}, ...]
+                const allItems = jsonInit.data;
                 const total = allItems.length;
 
+                if (total === 0) {
+                    alert("서버에서 티커를 하나도 읽지 못했습니다! 엑셀 파일 문제일 수 있습니다.");
+                    resetUI(btn, loader);
+                    return;
+                }
+
                 // 2. 배치 처리 루프
+                let failCount = 0;
                 for (let i = 0; i < total; i += BATCH_SIZE) {
                     const batch = allItems.slice(i, i + BATCH_SIZE);
                     pDetail.innerText = `스캔 중... (${i + 1} ~ ${Math.min(i + BATCH_SIZE, total)} / ${total})`;
 
-                    const resBatch = await fetch('/api/batch_screen', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ items: batch })
-                    });
-                    const jsonBatch = await resBatch.json();
+                    try {
+                        const resBatch = await fetch('/api/batch_screen', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ items: batch })
+                        });
 
-                    if (jsonBatch.status === 'success') {
-                        globalData = globalData.concat(jsonBatch.results);
-                        // 부분 렌더링 (선택사항, 너무 자주하면 느려짐)
+                        if (!resBatch.ok) {
+                            console.warn("Batch failed HTTP:", resBatch.status);
+                            failCount++;
+                            continue;
+                        }
+
+                        const jsonBatch = await resBatch.json();
+
+                        if (jsonBatch.status === 'success') {
+                            globalData = globalData.concat(jsonBatch.results);
+                        } else {
+                            console.warn("Batch error:", jsonBatch.message);
+                            failCount++;
+                        }
+                    } catch (err) {
+                        console.error("Batch Request Error:", err);
+                        failCount++;
                     }
 
                     // 진행률 업데이트
@@ -270,43 +299,48 @@
                     pPercent.innerText = progress + '%';
                 }
 
-                // 3. 최종 처리 (순위 계산 등)
+                // 3. 최종 처리
                 pDetail.innerText = "순위 계산 및 정렬 중...";
                 calculateRanksAndSort();
                 renderTable(globalData);
+
+                rCount.innerText = `총 ${globalData.length}개 검색됨 (대상: ${total}개)`;
+                if (failCount > 0) {
+                    rCount.innerText += ` | ⚠️ ${failCount}개 배치 실패`;
+                }
 
                 loader.style.display = 'none';
                 area.style.display = 'block';
                 btn.innerText = '✅ 조회 완료 (다시 조회)';
                 btn.disabled = false;
 
+                if (globalData.length === 0 && total > 0) {
+                    alert("데이터 조회 결과가 0건입니다.\nVercel 서버 IP가 Yahoo Finance에 의해 차단되었을 가능성이 높습니다.\n잠시 후 다시 시도하거나 로컬에서 실행해주세요.");
+                }
+
             } catch (e) {
                 console.error(e);
                 alert('오류 발생: ' + e.message);
-                loader.style.display = 'none';
-                btn.disabled = false;
+                resetUI(btn, loader);
             }
         }
 
-        function calculateRanksAndSort() {
-            // RS 기준 내림차순 (기본)
-            globalData.sort((a, b) => b.RS - a.RS);
+        function resetUI(btn, loader) {
+            loader.style.display = 'none';
+            btn.disabled = false;
+            btn.innerText = '🔍 조회하기';
+        }
 
-            // Market Cap Rank 계산
-            // 시총 기준 정렬해서 등수 매기고 다시 되돌리거나, 그냥 매김
-            // 복사본 정렬
+        function calculateRanksAndSort() {
+            globalData.sort((a, b) => b.RS - a.RS);
             const sortedByMC = [...globalData].sort((a, b) => b.MarketCap - a.MarketCap);
             const rankMap = {};
             sortedByMC.forEach((item, idx) => {
                 rankMap[item.Ticker] = idx + 1;
             });
-
-            // 원래 데이터에 랭크 주입
             globalData.forEach(item => {
                 item.MarketCapRank = rankMap[item.Ticker];
             });
-
-            // 기본 뷰는 RS 내림차순 유지
             globalData.sort((a, b) => b.RS - a.RS);
         }
 
@@ -346,8 +380,6 @@
 
         async function downloadExcel() {
             if (globalData.length === 0) return alert('데이터가 없습니다.');
-
-            // Post current data to backend to generate excel
             try {
                 const res = await fetch('/api/create_excel', {
                     method: 'POST',

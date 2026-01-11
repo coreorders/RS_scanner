@@ -112,12 +112,17 @@ def calculate_batch(items):
     info_map = {x['Ticker']: x for x in items}
     
     # 1. Price Bulk Download
-    # 배치 사이즈가 작으므로(20~50개) 금방 끝남
-    # QQQ는 매 배치마다 필요하므로 리스트에 추가
     download_list = tickers + ["QQQ"]
     
-    # threads=False로 설정하여 오버헤드 줄임 (배치가 작아서)
-    data = yf.download(download_list, period="6mo", progress=False, threads=True)
+    try:
+        # threads=False로 설정하여 오버헤드 줄임 (배치가 작아서)
+        data = yf.download(download_list, period="6mo", progress=False, threads=True)
+    except Exception as e:
+        print(f"YF Download Error: {e}")
+        return []
+        
+    if data.empty:
+        return []
     
     if 'Adj Close' in data.columns:
         closes = data['Adj Close']
@@ -140,10 +145,22 @@ def calculate_batch(items):
     
     # Shares (Parallel)
     shares_map = {}
-    with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(tickers), 10)) as exc:
-        future_to_t = {exc.submit(get_shares_outstanding, t): t for t in tickers}
-        for f in concurrent.futures.as_completed(future_to_t):
-            t, s = f.result()
+    
+    # Vercel에서 ThreadPool이 문제를 일으킬 수도 있으니 (Resource limit),
+    # 실패하면 순차 처리하도록 하거나 max_workers를 줄임
+    try:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=min(len(tickers), 5)) as exc:
+            future_to_t = {exc.submit(get_shares_outstanding, t): t for t in tickers}
+            for f in concurrent.futures.as_completed(future_to_t):
+                try:
+                    t, s = f.result()
+                    shares_map[t] = s
+                except:
+                    pass
+    except:
+        # Fallback if threading fails
+        for t in tickers:
+            _, s = get_shares_outstanding(t)
             shares_map[t] = s
             
     results = []
