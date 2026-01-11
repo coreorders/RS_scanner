@@ -278,35 +278,31 @@ def get_market_cap_and_rs(ticker_info_list, limit=None, progress_callback=None):
                     except: pass
                 
                 # Fallback: Retry with session using yf.download
-                if cur_price == 0 or prev_price == 0:
                     for _ in range(3): 
                         try:
-                            # Create a FRESH session for each attempt to avoid poisoned cookies
-                            temp_session = get_yf_session()
+                            # Create a FRESH session
+                            session = get_yf_session()
+                            t_obj = yf.Ticker(t, session=session)
                             
-                            # Use yf.download with session for single ticker
-                            single_df = yf.download(t, period="6mo", session=temp_session, progress=False, threads=False)
-                            if not single_df.empty:
-                                if 'Adj Close' in single_df.columns: s_hist = single_df['Adj Close']
-                                elif 'Close' in single_df.columns: s_hist = single_df['Close']
-                                else: s_hist = single_df.iloc[:,0]
-
-                                cur_price = float(s_hist.iloc[-1])
-                                p_idx = -61 if len(s_hist) >= 61 else 0
-                                prev_price = float(s_hist.iloc[p_idx])
-                                break 
+                            # [Light Mode] Use fast_info ONLY. Avoid history() which triggers blocking.
+                            # We will only get current price. RS cannot be calculated (will be 0).
+                            if t_obj:
+                                cur_price = t_obj.fast_info.get('last_price', 0)
+                                prev_price = cur_price # Set same as current so RS becomes 0 (flat)
+                                break
                         except:
                             time.sleep(1)
                             pass
-                        time.sleep(2) # Increased wait between retries 
+                        time.sleep(1)
                 
-                if pd.isna(cur_price) or pd.isna(prev_price) or prev_price == 0:
+                if pd.isna(cur_price) or cur_price == 0:
                     print(f"Skipping {t}: No price data")
                     continue
                 
-                # RS 계산 (QQQ = 벤치마크 지수)
-                chg = cur_price / prev_price
-                rs = (chg / q_chg) - 1 if q_chg != 0 else 0
+                # RS 계산 (데이터 없음 -> 0)
+                # chg = cur_price / prev_price
+                # rs = (chg / q_chg) - 1 if q_chg != 0 else 0
+                rs = 0 # History not available in Light Mode
                 
                 # Market Cap
                 mcap = cur_price * share_count
