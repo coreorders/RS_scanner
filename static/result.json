@@ -1,0 +1,806 @@
+{
+  "last_updated": "2026-01-11 13:08:07 UTC",
+  "total_count": 100,
+  "data": [
+    {
+      "Ticker": "GRAL",
+      "RS": 0.3768,
+      "Market Cap": "3.90B",
+      "Price": 100.1,
+      "Sector": "Healthcare",
+      "Industry": "Diagnostics & Research"
+    },
+    {
+      "Ticker": "BMA",
+      "RS": 0.7886,
+      "Market Cap": "6.73B",
+      "Price": 95.45,
+      "Sector": "Financial Services",
+      "Industry": "Banks - Regional"
+    },
+    {
+      "Ticker": "SNDK",
+      "RS": 1.8258,
+      "Market Cap": "55.31B",
+      "Price": 377.41,
+      "Sector": "Technology",
+      "Industry": "Computer Hardware"
+    },
+    {
+      "Ticker": "APGE",
+      "RS": 0.4193,
+      "Market Cap": "5.33B",
+      "Price": 77.99,
+      "Sector": "Healthcare",
+      "Industry": "Biotechnology"
+    },
+    {
+      "Ticker": "NUTX",
+      "RS": 0.7838,
+      "Market Cap": "1.32B",
+      "Price": 186.18,
+      "Sector": "Healthcare",
+      "Industry": "Medical Care Facilities"
+    },
+    {
+      "Ticker": "BLTE",
+      "RS": 0.9042,
+      "Market Cap": "5.94B",
+      "Price": 158.36,
+      "Sector": "Healthcare",
+      "Industry": "Biotechnology"
+    },
+    {
+      "Ticker": "CELC",
+      "RS": 1.2178,
+      "Market Cap": "4.97B",
+      "Price": 107.51,
+      "Sector": "Healthcare",
+      "Industry": "Biotechnology"
+    },
+    {
+      "Ticker": "EXAS",
+      "RS": 0.6069,
+      "Market Cap": "19.38B",
+      "Price": 102.11,
+      "Sector": "Healthcare",
+      "Industry": "Diagnostics & Research"
+    },
+    {
+      "Ticker": "LITE",
+      "RS": 1.1363,
+      "Market Cap": "24.92B",
+      "Price": 351.42,
+      "Sector": "Technology",
+      "Industry": "Communication Equipment"
+    },
+    {
+      "Ticker": "VICR",
+      "RS": 1.528,
+      "Market Cap": "6.39B",
+      "Price": 142.31,
+      "Sector": "Technology",
+      "Industry": "Electronic Components"
+    },
+    {
+      "Ticker": "ESTA",
+      "RS": 0.4669,
+      "Market Cap": "1.99B",
+      "Price": 68.34,
+      "Sector": "Healthcare",
+      "Industry": "Medical Devices"
+    },
+    {
+      "Ticker": "KYMR",
+      "RS": 0.2231,
+      "Market Cap": "5.98B",
+      "Price": 74.77,
+      "Sector": "Healthcare",
+      "Industry": "Biotechnology"
+    },
+    {
+      "Ticker": "RVMD",
+      "RS": 1.3804,
+      "Market Cap": "22.94B",
+      "Price": 118.64,
+      "Sector": "Healthcare",
+      "Industry": "Biotechnology"
+    },
+    {
+      "Ticker": "GH",
+      "RS": 0.6784,
+      "Market Cap": "14.31B",
+      "Price": 110.17,
+      "Sector": "Healthcare",
+      "Industry": "Diagnostics & Research"
+    },
+    {
+      "Ticker": "TSEM",
+      "RS": 0.5587,
+      "Market Cap": "13.50B",
+      "Price": 120.03,
+      "Sector": "Technology",
+      "Industry": "Semiconductors"
+    },
+    {
+      "Ticker": "RNA",
+      "RS": 0.433,
+      "Market Cap": "10.90B",
+      "Price": 72.37,
+      "Sector": "Healthcare",
+      "Industry": "Biotechnology"
+    },
+    {
+      "Ticker": "DRUG",
+      "RS": 0.2093,
+      "Market Cap": "0.68B",
+      "Price": 86.75,
+      "Sector": "Healthcare",
+      "Industry": "Biotechnology"
+    },
+    {
+      "Ticker": "WDC",
+      "RS": 0.6901,
+      "Market Cap": "68.72B",
+      "Price": 200.46,
+      "Sector": "Technology",
+      "Industry": "Computer Hardware"
+    },
+    {
+      "Ticker": "PVLA",
+      "RS": 0.1979,
+      "Market Cap": "1.09B",
+      "Price": 92.41,
+      "Sector": "Healthcare",
+      "Industry": "Biotechnology"
+    },
+    {
+      "Ticker": "COHR",
+      "RS": 0.5516,
+      "Market Cap": "27.98B",
+      "Price": 178.06,
+      "Sector": "Technology",
+      "Industry": "Scientific & Technical Instruments"
+    },
+    {
+      "Ticker": "ALB",
+      "RS": 0.6021,
+      "Market Cap": "18.98B",
+      "Price": 161.29,
+      "Sector": "Basic Materials",
+      "Industry": "Specialty Chemicals"
+    },
+    {
+      "Ticker": "HAE",
+      "RS": 0.5711,
+      "Market Cap": "3.95B",
+      "Price": 82.03,
+      "Sector": "Healthcare",
+      "Industry": "Medical Devices"
+    },
+    {
+      "Ticker": "TER",
+      "RS": 0.5129,
+      "Market Cap": "34.56B",
+      "Price": 217.26,
+      "Sector": "Technology",
+      "Industry": "Semiconductor Equipment & Materials"
+    },
+    {
+      "Ticker": "GDXU",
+      "RS": 0.3012,
+      "Market Cap": "N/A",
+      "Price": 299.13,
+      "Sector": "N/A",
+      "Industry": "N/A"
+    },
+    {
+      "Ticker": "CIEN",
+      "RS": 0.3332,
+      "Market Cap": "32.52B",
+      "Price": 230.56,
+      "Sector": "Technology",
+      "Industry": "Communication Equipment"
+    },
+    {
+      "Ticker": "INSP",
+      "RS": 0.1893,
+      "Market Cap": "2.91B",
+      "Price": 98.38,
+      "Sector": "Healthcare",
+      "Industry": "Medical Devices"
+    },
+    {
+      "Ticker": "PAM",
+      "RS": 0.244,
+      "Market Cap": "4.79B",
+      "Price": 83.46,
+      "Sector": "Utilities",
+      "Industry": "Utilities - Independent Power Producers"
+    },
+    {
+      "Ticker": "PTGX",
+      "RS": -0.0063,
+      "Market Cap": "5.02B",
+      "Price": 80.22,
+      "Sector": "Healthcare",
+      "Industry": "Biotechnology"
+    },
+    {
+      "Ticker": "GMED",
+      "RS": 0.5499,
+      "Market Cap": "12.76B",
+      "Price": 94.47,
+      "Sector": "Healthcare",
+      "Industry": "Medical Devices"
+    },
+    {
+      "Ticker": "SQM",
+      "RS": 0.5884,
+      "Market Cap": "21.25B",
+      "Price": 74.4,
+      "Sector": "Basic Materials",
+      "Industry": "Specialty Chemicals"
+    },
+    {
+      "Ticker": "KRYS",
+      "RS": 0.3248,
+      "Market Cap": "7.58B",
+      "Price": 261.41,
+      "Sector": "Healthcare",
+      "Industry": "Biotechnology"
+    },
+    {
+      "Ticker": "SATS",
+      "RS": 0.5239,
+      "Market Cap": "34.55B",
+      "Price": 120.0,
+      "Sector": "Communication Services",
+      "Industry": "Telecom Services"
+    },
+    {
+      "Ticker": "ABVX",
+      "RS": 0.1146,
+      "Market Cap": "8.97B",
+      "Price": 114.4,
+      "Sector": "Healthcare",
+      "Industry": "Biotechnology"
+    },
+    {
+      "Ticker": "TARS",
+      "RS": 0.0491,
+      "Market Cap": "3.26B",
+      "Price": 76.87,
+      "Sector": "Healthcare",
+      "Industry": "Biotechnology"
+    },
+    {
+      "Ticker": "SHNY",
+      "RS": 0.1145,
+      "Market Cap": "N/A",
+      "Price": 148.47,
+      "Sector": "N/A",
+      "Industry": "N/A"
+    },
+    {
+      "Ticker": "COKE",
+      "RS": 0.1332,
+      "Market Cap": "10.02B",
+      "Price": 150.35,
+      "Sector": "Consumer Defensive",
+      "Industry": "Beverages - Non-Alcoholic"
+    },
+    {
+      "Ticker": "SPHR",
+      "RS": 0.4547,
+      "Market Cap": "3.43B",
+      "Price": 95.26,
+      "Sector": "Communication Services",
+      "Industry": "Entertainment"
+    },
+    {
+      "Ticker": "JBHT",
+      "RS": 0.4182,
+      "Market Cap": "20.02B",
+      "Price": 206.85,
+      "Sector": "Industrials",
+      "Industry": "Integrated Freight & Logistics"
+    },
+    {
+      "Ticker": "IRON",
+      "RS": 0.0202,
+      "Market Cap": "2.95B",
+      "Price": 78.14,
+      "Sector": "Healthcare",
+      "Industry": "Biotechnology"
+    },
+    {
+      "Ticker": "BHF",
+      "RS": 0.2352,
+      "Market Cap": "3.70B",
+      "Price": 64.7,
+      "Sector": "Financial Services",
+      "Industry": "Insurance - Life"
+    },
+    {
+      "Ticker": "KEN",
+      "RS": 0.3563,
+      "Market Cap": "3.62B",
+      "Price": 69.49,
+      "Sector": "Utilities",
+      "Industry": "Utilities - Independent Power Producers"
+    },
+    {
+      "Ticker": "MU",
+      "RS": 0.7589,
+      "Market Cap": "388.40B",
+      "Price": 345.09,
+      "Sector": "Technology",
+      "Industry": "Semiconductors"
+    },
+    {
+      "Ticker": "BBIO",
+      "RS": 0.3031,
+      "Market Cap": "14.89B",
+      "Price": 77.25,
+      "Sector": "Healthcare",
+      "Industry": "Biotechnology"
+    },
+    {
+      "Ticker": "TTMI",
+      "RS": 0.2744,
+      "Market Cap": "7.63B",
+      "Price": 73.88,
+      "Sector": "Technology",
+      "Industry": "Electronic Components"
+    },
+    {
+      "Ticker": "KALU",
+      "RS": 0.4813,
+      "Market Cap": "1.99B",
+      "Price": 123.07,
+      "Sector": "Basic Materials",
+      "Industry": "Aluminum"
+    },
+    {
+      "Ticker": "FROG",
+      "RS": 0.2013,
+      "Market Cap": "7.01B",
+      "Price": 59.27,
+      "Sector": "Technology",
+      "Industry": "Software - Application"
+    },
+    {
+      "Ticker": "ALGT",
+      "RS": 0.3899,
+      "Market Cap": "1.74B",
+      "Price": 94.97,
+      "Sector": "Industrials",
+      "Industry": "Airlines"
+    },
+    {
+      "Ticker": "MTSI",
+      "RS": 0.267,
+      "Market Cap": "13.10B",
+      "Price": 174.87,
+      "Sector": "Technology",
+      "Industry": "Semiconductors"
+    },
+    {
+      "Ticker": "AMAT",
+      "RS": 0.3181,
+      "Market Cap": "239.93B",
+      "Price": 301.18,
+      "Sector": "Technology",
+      "Industry": "Semiconductor Equipment & Materials"
+    },
+    {
+      "Ticker": "GM",
+      "RS": 0.3847,
+      "Market Cap": "78.90B",
+      "Price": 82.87,
+      "Sector": "Consumer Cyclical",
+      "Industry": "Auto Manufacturers"
+    },
+    {
+      "Ticker": "LMND",
+      "RS": 0.4454,
+      "Market Cap": "5.95B",
+      "Price": 79.65,
+      "Sector": "Financial Services",
+      "Industry": "Insurance - Property & Casualty"
+    },
+    {
+      "Ticker": "ATI",
+      "RS": 0.3748,
+      "Market Cap": "16.86B",
+      "Price": 122.3,
+      "Sector": "Industrials",
+      "Industry": "Metal Fabrication"
+    },
+    {
+      "Ticker": "INSM",
+      "RS": 0.0392,
+      "Market Cap": "37.53B",
+      "Price": 175.97,
+      "Sector": "Healthcare",
+      "Industry": "Biotechnology"
+    },
+    {
+      "Ticker": "LLY",
+      "RS": 0.2496,
+      "Market Cap": "953.44B",
+      "Price": 1063.56,
+      "Sector": "Healthcare",
+      "Industry": "Drug Manufacturers - General"
+    },
+    {
+      "Ticker": "SANM",
+      "RS": 0.1649,
+      "Market Cap": "8.52B",
+      "Price": 153.41,
+      "Sector": "Technology",
+      "Industry": "Electronic Components"
+    },
+    {
+      "Ticker": "EPAM",
+      "RS": 0.3742,
+      "Market Cap": "11.80B",
+      "Price": 211.93,
+      "Sector": "Technology",
+      "Industry": "Information Technology Services"
+    },
+    {
+      "Ticker": "DGP",
+      "RS": 0.1018,
+      "Market Cap": "N/A",
+      "Price": 174.91,
+      "Sector": "N/A",
+      "Industry": "N/A"
+    },
+    {
+      "Ticker": "SCCO",
+      "RS": 0.2611,
+      "Market Cap": "139.67B",
+      "Price": 170.52,
+      "Sector": "Basic Materials",
+      "Industry": "Copper"
+    },
+    {
+      "Ticker": "AMD",
+      "RS": -0.1121,
+      "Market Cap": "330.77B",
+      "Price": 203.17,
+      "Sector": "Technology",
+      "Industry": "Semiconductors"
+    },
+    {
+      "Ticker": "NEGG",
+      "RS": -0.0456,
+      "Market Cap": "1.04B",
+      "Price": 49.49,
+      "Sector": "Consumer Cyclical",
+      "Industry": "Internet Retail"
+    },
+    {
+      "Ticker": "IRMD",
+      "RS": 0.2969,
+      "Market Cap": "1.26B",
+      "Price": 98.95,
+      "Sector": "Healthcare",
+      "Industry": "Medical Devices"
+    },
+    {
+      "Ticker": "STX",
+      "RS": 0.3727,
+      "Market Cap": "66.24B",
+      "Price": 304.01,
+      "Sector": "Technology",
+      "Industry": "Computer Hardware"
+    },
+    {
+      "Ticker": "MDB",
+      "RS": 0.2395,
+      "Market Cap": "33.22B",
+      "Price": 408.12,
+      "Sector": "Technology",
+      "Industry": "Software - Infrastructure"
+    },
+    {
+      "Ticker": "ENS",
+      "RS": 0.2651,
+      "Market Cap": "5.93B",
+      "Price": 158.29,
+      "Sector": "Industrials",
+      "Industry": "Electrical Equipment & Parts"
+    },
+    {
+      "Ticker": "DLTR",
+      "RS": 0.32,
+      "Market Cap": "27.00B",
+      "Price": 132.38,
+      "Sector": "Consumer Defensive",
+      "Industry": "Discount Stores"
+    },
+    {
+      "Ticker": "KEX",
+      "RS": 0.4546,
+      "Market Cap": "7.00B",
+      "Price": 125.47,
+      "Sector": "Industrials",
+      "Industry": "Marine Shipping"
+    },
+    {
+      "Ticker": "BTSGU",
+      "RS": 0.1849,
+      "Market Cap": "N/A",
+      "Price": 126.53,
+      "Sector": "Healthcare",
+      "Industry": "Health Information Services"
+    },
+    {
+      "Ticker": "CAH",
+      "RS": 0.2462,
+      "Market Cap": "47.78B",
+      "Price": 201.11,
+      "Sector": "Healthcare",
+      "Industry": "Medical Distribution"
+    },
+    {
+      "Ticker": "IONS",
+      "RS": 0.0723,
+      "Market Cap": "13.01B",
+      "Price": 80.3,
+      "Sector": "Healthcare",
+      "Industry": "Biotechnology"
+    },
+    {
+      "Ticker": "ILMN",
+      "RS": 0.4774,
+      "Market Cap": "21.68B",
+      "Price": 141.07,
+      "Sector": "Healthcare",
+      "Industry": "Diagnostics & Research"
+    },
+    {
+      "Ticker": "HCC",
+      "RS": 0.3762,
+      "Market Cap": "5.10B",
+      "Price": 96.97,
+      "Sector": "Basic Materials",
+      "Industry": "Coking Coal"
+    },
+    {
+      "Ticker": "SII",
+      "RS": 0.1769,
+      "Market Cap": "2.72B",
+      "Price": 105.59,
+      "Sector": "Financial Services",
+      "Industry": "Asset Management"
+    },
+    {
+      "Ticker": "CRS",
+      "RS": 0.2945,
+      "Market Cap": "16.38B",
+      "Price": 328.65,
+      "Sector": "Industrials",
+      "Industry": "Metal Fabrication"
+    },
+    {
+      "Ticker": "MDGL",
+      "RS": 0.1209,
+      "Market Cap": "11.68B",
+      "Price": 514.06,
+      "Sector": "Healthcare",
+      "Industry": "Biotechnology"
+    },
+    {
+      "Ticker": "NUVL",
+      "RS": 0.1826,
+      "Market Cap": "8.16B",
+      "Price": 105.05,
+      "Sector": "Healthcare",
+      "Industry": "Biotechnology"
+    },
+    {
+      "Ticker": "NTRA",
+      "RS": 0.2922,
+      "Market Cap": "32.67B",
+      "Price": 234.31,
+      "Sector": "Healthcare",
+      "Industry": "Diagnostics & Research"
+    },
+    {
+      "Ticker": "CYTK",
+      "RS": -0.0238,
+      "Market Cap": "7.64B",
+      "Price": 62.51,
+      "Sector": "Healthcare",
+      "Industry": "Biotechnology"
+    },
+    {
+      "Ticker": "AU",
+      "RS": 0.2094,
+      "Market Cap": "46.58B",
+      "Price": 92.25,
+      "Sector": "Basic Materials",
+      "Industry": "Gold"
+    },
+    {
+      "Ticker": "ENVA",
+      "RS": 0.3942,
+      "Market Cap": "4.00B",
+      "Price": 161.6,
+      "Sector": "Financial Services",
+      "Industry": "Credit Services"
+    },
+    {
+      "Ticker": "CAT",
+      "RS": 0.1191,
+      "Market Cap": "289.34B",
+      "Price": 617.62,
+      "Sector": "Industrials",
+      "Industry": "Farm & Heavy Construction Machinery"
+    },
+    {
+      "Ticker": "DY",
+      "RS": 0.1026,
+      "Market Cap": "10.15B",
+      "Price": 338.81,
+      "Sector": "Industrials",
+      "Industry": "Engineering & Construction"
+    },
+    {
+      "Ticker": "JAZZ",
+      "RS": 0.1476,
+      "Market Cap": "9.79B",
+      "Price": 161.13,
+      "Sector": "Healthcare",
+      "Industry": "Biotechnology"
+    },
+    {
+      "Ticker": "CMA",
+      "RS": 0.1059,
+      "Market Cap": "11.69B",
+      "Price": 91.51,
+      "Sector": "Financial Services",
+      "Industry": "Banks - Regional"
+    },
+    {
+      "Ticker": "LRCX",
+      "RS": 0.5071,
+      "Market Cap": "275.36B",
+      "Price": 218.36,
+      "Sector": "Technology",
+      "Industry": "Semiconductor Equipment & Materials"
+    },
+    {
+      "Ticker": "BRKRP",
+      "RS": 0.3389,
+      "Market Cap": "N/A",
+      "Price": 401.55,
+      "Sector": "Healthcare",
+      "Industry": "Medical Devices"
+    },
+    {
+      "Ticker": "GKOS",
+      "RS": 0.2614,
+      "Market Cap": "6.49B",
+      "Price": 112.92,
+      "Sector": "Healthcare",
+      "Industry": "Medical Devices"
+    },
+    {
+      "Ticker": "ONTO",
+      "RS": 0.3863,
+      "Market Cap": "9.42B",
+      "Price": 189.65,
+      "Sector": "Technology",
+      "Industry": "Semiconductor Equipment & Materials"
+    },
+    {
+      "Ticker": "AEIS",
+      "RS": 0.1458,
+      "Market Cap": "8.29B",
+      "Price": 219.59,
+      "Sector": "Industrials",
+      "Industry": "Electrical Equipment & Parts"
+    },
+    {
+      "Ticker": "RGEN",
+      "RS": 0.0713,
+      "Market Cap": "9.39B",
+      "Price": 166.82,
+      "Sector": "Healthcare",
+      "Industry": "Medical Instruments & Supplies"
+    },
+    {
+      "Ticker": "MOG-B",
+      "RS": 0.2204,
+      "Market Cap": "8.94B",
+      "Price": 267.0,
+      "Sector": "Industrials",
+      "Industry": "Aerospace & Defense"
+    },
+    {
+      "Ticker": "WAT",
+      "RS": 0.135,
+      "Market Cap": "23.63B",
+      "Price": 396.75,
+      "Sector": "Healthcare",
+      "Industry": "Diagnostics & Research"
+    },
+    {
+      "Ticker": "BIO-B",
+      "RS": 0.0394,
+      "Market Cap": "9.72B",
+      "Price": 310.7,
+      "Sector": "Healthcare",
+      "Industry": "Medical Devices"
+    },
+    {
+      "Ticker": "FDX",
+      "RS": 0.2751,
+      "Market Cap": "73.70B",
+      "Price": 312.36,
+      "Sector": "Industrials",
+      "Industry": "Integrated Freight & Logistics"
+    },
+    {
+      "Ticker": "RYAAY",
+      "RS": 0.0821,
+      "Market Cap": "36.62B",
+      "Price": 69.76,
+      "Sector": "Industrials",
+      "Industry": "Airlines"
+    },
+    {
+      "Ticker": "NEM",
+      "RS": 0.1506,
+      "Market Cap": "119.72B",
+      "Price": 108.99,
+      "Sector": "Basic Materials",
+      "Industry": "Gold"
+    },
+    {
+      "Ticker": "FORTY",
+      "RS": 0.0865,
+      "Market Cap": "2.61B",
+      "Price": 170.0,
+      "Sector": "Technology",
+      "Industry": "Information Technology Services"
+    },
+    {
+      "Ticker": "HURN",
+      "RS": 0.1623,
+      "Market Cap": "3.14B",
+      "Price": 181.34,
+      "Sector": "Industrials",
+      "Industry": "Consulting Services"
+    },
+    {
+      "Ticker": "AXSM",
+      "RS": 0.3069,
+      "Market Cap": "8.54B",
+      "Price": 169.38,
+      "Sector": "Healthcare",
+      "Industry": "Biotechnology"
+    },
+    {
+      "Ticker": "ALGN",
+      "RS": 0.2688,
+      "Market Cap": "12.52B",
+      "Price": 172.79,
+      "Sector": "Healthcare",
+      "Industry": "Medical Instruments & Supplies"
+    },
+    {
+      "Ticker": "MRUS",
+      "RS": -0.0913,
+      "Market Cap": "6.83B",
+      "Price": 90.0,
+      "Sector": "Healthcare",
+      "Industry": "Biotechnology"
+    }
+  ]
+}
