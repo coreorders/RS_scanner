@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lee's RS Scanner (Client-Side)</title>
+    <title>Lee's RS Scanner (US)</title>
     <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.png') }}">
     <style>
         :root {
@@ -181,7 +181,7 @@
 
         <div class="info-box">
             <p>1. <strong>Solution</strong>: Vercel IP 차단을 피해 <strong>브라우저에서 직접 야후 데이터를 수집</strong>합니다.<br>
-                2. <strong>Proxy</strong>: CORS 문제를 해결하기 위해 공용 프록시(corsproxy.io)를 사용합니다.<br>
+                2. <strong>Proxy</strong>: CORS 문제를 해결하기 위해 공용 프록시(corsproxy.io 등)를 순차적으로 시도합니다.<br>
                 3. <strong>Data</strong>: 실시간 주가 차트(v8/chart)와 주식 수(v10/quoteSummary)를 결합하여 계산합니다.</p>
             <p class="highlight-danger">⚠️ 주의: 브라우저가 직접 통신하므로 너무 빠른 반복 요청은 자제해주세요.</p>
         </div>
@@ -228,8 +228,28 @@
         const BATCH_SIZE = 5; // 브라우저 부하 관리용
         const DELAY_BETWEEN_BATCHES = 500; // ms
 
-        // PROXY URL (Public CORS Proxy)
-        const PROXY_BASE = "https://corsproxy.io/?url=";
+        // PROXY LIST (Fallback rotation)
+        // 1순위: corsproxy.io (가장 무난)
+        // 2순위: api.allorigins.win (백업)
+        const PROXIES = [
+            "https://corsproxy.io/?url=",
+            "https://api.allorigins.win/raw?url="
+        ];
+
+        async function fetchWithProxy(targetUrl) {
+            for (const proxyBase of PROXIES) {
+                try {
+                    // allorigins 등 일부 프록시는 인코딩 필요
+                    const proxyUrl = proxyBase + encodeURIComponent(targetUrl);
+                    const res = await fetch(proxyUrl);
+                    if (res.ok) return res;
+                    console.warn(`Proxy failed: ${proxyBase}`);
+                } catch (e) {
+                    console.warn(`Proxy connection error: ${proxyBase}`, e);
+                }
+            }
+            return null; // All failed
+        }
 
         async function startClientSideSearch() {
             const btn = document.getElementById('search-btn');
@@ -263,10 +283,10 @@
                 }
 
                 // 2. Fetch QQQ Benchmark First
-                pDetail.innerText = "벤치마크(QQQ) 데이터 수집 중...";
+                pDetail.innerText = "벤치마크(QQQ) 데이터 수집 중 (다중 프록시)...";
                 const qqqData = await fetchYahooChart("QQQ");
                 if (!qqqData || qqqData.length < 60) {
-                    throw new Error("QQQ 데이터를 가져올 수 없어 RS 계산이 불가능합니다.");
+                    throw new Error("QQQ 데이터를 모든 프록시에서 가져오지 못했습니다. 잠시 후 다시 시도해주세요.");
                 }
                 const qqqPerf = calculatePerformance(qqqData);
                 console.log("QQQ Performance:", qqqPerf);
@@ -302,7 +322,6 @@
                             }
 
                             // Market Cap
-                            // Ensure shares is valid, fallback if needed
                             const finalShares = shares || 0;
                             const mcap = currentPrice * finalShares;
 
@@ -359,24 +378,24 @@
 
         // --- Yahoo Finance Helper (Client-Side) ---
 
-        // 1. Fetch Chart (Price History)
+        // 1. Fetch Chart (Price History) with Proxy Rotation
         async function fetchYahooChart(ticker) {
-            // v8 chart endpoint
             const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=3mo`;
-            const proxyUrl = PROXY_BASE + encodeURIComponent(url);
 
             try {
-                const res = await fetch(proxyUrl);
-                if (!res.ok) return null;
+                const res = await fetchWithProxy(url);
+                if (!res) return null;
+
                 const json = await res.json();
+                // API 구조 체크
+                if (!json.chart || !json.chart.result) return null;
                 const result = json.chart.result[0];
 
                 if (!result || !result.timestamp || !result.indicators.quote[0].adjclose) return null;
 
                 const timestamps = result.timestamp;
-                const adjCloses = result.indicators.quote[0].adjclose; // or close
+                const adjCloses = result.indicators.quote[0].adjclose;
 
-                // Zip into usable format
                 const data = [];
                 for (let i = 0; i < timestamps.length; i++) {
                     if (adjCloses[i]) {
@@ -385,43 +404,35 @@
                 }
                 return data;
             } catch (e) {
+                // console.error(`Error parsing chart for ${ticker}`, e);
                 return null;
             }
         }
 
-        // 2. Fetch Shares Outstanding (Quote Summary)
+        // 2. Fetch Shares Outstanding (Quote Summary) with Proxy Rotation
         async function fetchYahooShares(ticker) {
-            // v10 quoteSummary endpoint
             const url = `https://query1.finance.yahoo.com/v10/finance/quoteSummary/${ticker}?modules=defaultKeyStatistics`;
-            const proxyUrl = PROXY_BASE + encodeURIComponent(url);
 
             try {
-                const res = await fetch(proxyUrl);
-                if (!res.ok) return 0;
-                const json = await res.json();
-                const result = json.quoteSummary.result[0];
+                const res = await fetchWithProxy(url);
+                if (!res) return 0;
 
+                const json = await res.json();
+                if (!json.quoteSummary || !json.quoteSummary.result) return 0;
+
+                const result = json.quoteSummary.result[0];
                 const shares = result.defaultKeyStatistics.sharesOutstanding.raw;
                 return shares || 0;
             } catch (e) {
-                // Fallback attempt? maybe just return 0
                 return 0;
             }
         }
 
         function calculatePerformance(data) {
             if (data.length < 60) return 0;
-            const current = data[data.length - 1].close;
-            const prev = data[data.length - 1 - 60].close; // approx 3 months ago (60 trading days)? 
-            // 3mo range is ~60-65 days. 
-            // Yahoo chart data length might vary. 
-            // Let's use the first available point if less than 60, but typically we want 60 days back.
-            // Or simpler: just use start vs end of 3mo? 
-            // The requirement is "60-day % change". 
-            // If we strictly need 60 bars ago:
-
+            // ~3mo data, use available window close to 60 days
             let lookbackIdx = data.length - 1 - 60;
-            if (lookbackIdx < 0) lookbackIdx = 0; // fallback logic
+            if (lookbackIdx < 0) lookbackIdx = 0;
 
             const startPrice = data[lookbackIdx].close;
             const endPrice = data[data.length - 1].close;
