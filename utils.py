@@ -275,17 +275,21 @@ def get_market_cap_and_rs(ticker_info_list, limit=None, progress_callback=None):
                         # Bulk에 없으면 개별 조회 시도 (Fallback)
                         pass
                 
-                # Bulk에 없거나 실패했으면 개별 조회
+                # Fallback: Bulk에 없거나 실패했으면 개별 조회 (Retry Logic)
                 if cur_price == 0 or prev_price == 0:
-                    try:
-                        t_obj = yf.Ticker(t)
-                        hist = t_obj.history(period="6mo")
-                        if not hist.empty:
-                            cur_price = hist['Close'].iloc[-1]
-                            p_idx = -61 if len(hist) >= 61 else 0
-                            prev_price = hist['Close'].iloc[p_idx]
-                    except:
-                        pass # 그래도 없으면 실패
+                    for _ in range(3): # 3 retries
+                        try:
+                            t_obj = yf.Ticker(t)
+                            hist = t_obj.history(period="6mo")
+                            if not hist.empty:
+                                cur_price = hist['Close'].iloc[-1]
+                                p_idx = -61 if len(hist) >= 61 else 0
+                                prev_price = hist['Close'].iloc[p_idx]
+                                break # Success
+                        except:
+                            time.sleep(1) # Wait before retry
+                            pass
+                        time.sleep(1) 
                 
                 if pd.isna(cur_price) or pd.isna(prev_price) or prev_price == 0:
                     print(f"Skipping {t}: No price data")
@@ -299,51 +303,6 @@ def get_market_cap_and_rs(ticker_info_list, limit=None, progress_callback=None):
                 mcap = cur_price * share_count
                 
                 # 메타데이터 병합
-                base = base_info_map.get(t, {})
-                final_sec = fetched_sec if fetched_sec and fetched_sec != 'N/A' else base.get('Sector', 'N/A')
-                final_ind = fetched_ind if fetched_ind and fetched_ind != 'N/A' else base.get('Industry', 'N/A')
-                
-                results.append({
-                    "Ticker": t,
-                    "Price": round(float(cur_price), 2),
-                    "RS": round(float(rs), 4),
-                    "MarketCap": round(float(mcap), 0),
-                    "Shares": share_count,
-                    "Sector": final_sec,
-                    "Industry": final_ind
-                })
-                
-            except Exception as e:
-                print(f"Error processing {t}: {e}")
-                continue
-
-        for future in concurrent.futures.as_completed(future_to_ticker):
-            t = future_to_ticker[future]
-            try:
-                # 결과: shares, sector, industry
-                _, share_count, fetched_sec, fetched_ind = future.result()
-                
-                processed_count += 1
-                # Progress Update: 30% -> 90%
-                if progress_callback:
-                    current_progress = 30 + int((processed_count / total_count) * 60)
-                    progress_callback(current_progress)
-
-                # 가격 데이터 확인
-                cur_price = latest.get(t, None)
-                prev_price = prev_60.get(t, None)
-                
-                if pd.isna(cur_price) or pd.isna(prev_price) or prev_price == 0:
-                    continue
-                
-                # RS 계산
-                chg = cur_price / prev_price
-                rs = (chg / q_chg) - 1 if q_chg != 0 else 0
-                
-                # Market Cap
-                mcap = cur_price * share_count
-                
-                # 메타데이터 병합 (API값이 있으면 덮어쓰기)
                 base = base_info_map.get(t, {})
                 final_sec = fetched_sec if fetched_sec and fetched_sec != 'N/A' else base.get('Sector', 'N/A')
                 final_ind = fetched_ind if fetched_ind and fetched_ind != 'N/A' else base.get('Industry', 'N/A')
