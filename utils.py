@@ -268,12 +268,12 @@ def get_market_cap_and_rs(ticker_info_list, limit=None, progress_callback=None):
                         prev_price = float(closes[t].iloc[prev_60_idx])
                     except: pass
                 
-                # Fallback: Retry with session
+                # Fallback: Retry with session using yf.download (Ticker object doesn't accept session easily)
                 if cur_price == 0 or prev_price == 0:
                     for _ in range(3): 
                         try:
-                            # Use yf.download with session for single ticker
-                            single_df = yf.download(t, period="6mo", session=session, progress=False)
+                            # Use yf.download with session for single ticker to ensure User-Agent is sent
+                            single_df = yf.download(t, period="6mo", session=session, progress=False, threads=False)
                             if not single_df.empty:
                                 if 'Adj Close' in single_df.columns: s_hist = single_df['Adj Close']
                                 elif 'Close' in single_df.columns: s_hist = single_df['Close']
@@ -292,7 +292,7 @@ def get_market_cap_and_rs(ticker_info_list, limit=None, progress_callback=None):
                     print(f"Skipping {t}: No price data")
                     continue
                 
-                # RS 계산
+                # RS 계산 (QQQ = 벤치마크 지수)
                 chg = cur_price / prev_price
                 rs = (chg / q_chg) - 1 if q_chg != 0 else 0
                 
