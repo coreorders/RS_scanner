@@ -3,7 +3,12 @@ import requests
 import yfinance as yf
 import time
 import io
+import warnings
 from concurrent.futures import ThreadPoolExecutor
+
+# 경고 메시지 숨김 (Pyarrow 등)
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=FutureWarning)
 
 def get_tickers_from_google_sheet(url):
     """
