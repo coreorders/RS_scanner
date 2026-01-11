@@ -259,7 +259,10 @@ def process_single_ticker(ticker, batch_data, qqq_data):
 
         # 1. Sector  Industry (캐시 우선)
         cached_info = SECTOR_CACHE.get(ticker)
-        if cached_info:
+        
+        # 캐시가 있고, 내용이 유효(N/A가 아님)한 경우에만 사용
+        # 사용자가 "N/A인 것도 다시 찔러보길" 원하므로, N/A면 API 호출 시도
+        if cached_info and cached_info.get('Sector', 'N/A') != 'N/A':
             sector = cached_info.get('Sector', 'N/A')
             industry = cached_info.get('Industry', 'N/A')
         else:
