@@ -178,7 +178,7 @@
                     <tr>
                         <th onclick="sortTable('Ticker')">Ticker ⬍</th>
                         <th onclick="sortTable('Price')">Price ($) ⬍</th>
-                        <th onclick="sortTable('MarketCap')">Market Cap ($) ⬍</th>
+                        <th onclick="sortTable('Market Cap')">Market Cap ($) ⬍</th>
                         <th onclick="sortTable('MarketCapRank')">MC Rank ⬍</th>
                         <th onclick="sortTable('RS')">RS Score ⬍</th>
                         <th onclick="sortTable('Sector')">Sector ⬍</th>
@@ -256,23 +256,41 @@
             }
         }
 
+        function parseMarketCap(mcStr) {
+            if (!mcStr || mcStr === 'N/A') return 0;
+            if (typeof mcStr === 'number') return mcStr;
+            let val = parseFloat(mcStr.replace(/[^0-9.-]/g, ''));
+            if (mcStr.includes('B')) val *= 1_000_000_000;
+            if (mcStr.includes('M')) val *= 1_000_000;
+            if (mcStr.includes('T')) val *= 1_000_000_000_000;
+            return val;
+        }
+
         function renderTable(data) {
             const tbody = document.getElementById('table-body');
             tbody.innerHTML = '';
 
-            // 랭크 계산 (시총 기준)
-            const sortedByMC = [...data].sort((a, b) => b.MarketCap - a.MarketCap);
+            // 랭크 계산 (시총 기준) - 문자열 파싱 후 정렬
+            const sortedByMC = [...data].sort((a, b) => parseMarketCap(b['Market Cap']) - parseMarketCap(a['Market Cap']));
             const rankMap = {};
             sortedByMC.forEach((item, idx) => rankMap[item.Ticker] = idx + 1);
 
             data.forEach(item => {
+                // MC Rank는 계산된 값 사용
                 item.MarketCapRank = rankMap[item.Ticker];
+
+                // Market Cap 표시
+                // JSON에서 이미 '3.08B' 형태로 옴. 숫자가 아니면 그대로 출력.
+                let mcDisplay = item['Market Cap'];
+                if (typeof mcDisplay === 'number') {
+                    mcDisplay = '$' + mcDisplay.toLocaleString();
+                }
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
                 <td><strong>${item.Ticker}</strong></td>
                 <td>$${Number(item.Price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td>$${Number(item.MarketCap).toLocaleString()}</td>
+                <td>${mcDisplay}</td>
                 <td>${item.MarketCapRank}</td>
                 <td class="${item.RS > 0 ? 'rs-pos' : 'rs-neg'}">${Number(item.RS).toFixed(4)}</td>
                 <td>${item.Sector}</td>
@@ -289,6 +307,12 @@
             globalData.sort((a, b) => {
                 let valA = a[key];
                 let valB = b[key];
+
+                // Market Cap 특수 처리
+                if (key === 'Market Cap') {
+                    valA = parseMarketCap(valA);
+                    valB = parseMarketCap(valB);
+                }
 
                 if (typeof valA === 'string') valA = valA.toUpperCase();
                 if (typeof valB === 'string') valB = valB.toUpperCase();
