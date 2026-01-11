@@ -4,66 +4,60 @@ import yfinance as yf
 import json
 import os
 import time
-import requests
-import random
-from requests.adapters import HTTPAdapter
-from urllib3.util.retry import Retry
+# requests 관련 import 제거 (yfinance 내부 사용)
 from utils import get_tickers_from_excel
 
 # 설정
 SOURCE_EXCEL_FILE = "RS분석툴.xlsm"
 OUTPUT_FILE = "static/result.json"
 
-def get_session():
-    """
-    브라우저처럼 위장한 세션 생성
-    """
-    session = requests.Session()
-    retry = Retry(connect=3, backoff_factor=0.5)
-    adapter = HTTPAdapter(max_retries=retry)
-    session.mount('http://', adapter)
-    session.mount('https://', adapter)
-    
-    user_agents = [
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
-    ]
-    
-    session.headers.update({
-        'User-Agent': random.choice(user_agents),
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-        'Accept-Language': 'en-US,en;q=0.5',
-        'Connection': 'keep-alive'
-    })
-    return session
+# 전역 로그 저장소
+DEBUG_LOGS = []
+
+def log(msg):
+    print(msg)
+    DEBUG_LOGS.append(msg)
 
 def get_market_cap_and_rs(ticker_info_list):
     tickers = [item['Ticker'] for item in ticker_info_list]
     info_map = {item['Ticker']: item for item in ticker_info_list}
     
-    print(f"[{time.strftime('%X')}] 총 {len(tickers)}개 티커 데이터 수집 시작 (Anti-Blocking On)...")
+    log(f"[{time.strftime('%X')}] 총 {len(tickers)}개 티커 데이터 수집 시작...")
     
-    session = get_session()
+    # 1. Price Bulk Download
     search_tickers = tickers + ["QQQ"]
     
     try:
-        # session 파라미터를 통해 위장된 헤더 전달
-        data = yf.download(search_tickers, period="6mo", progress=True, threads=True, session=session)
+        # User-Agent 설정 없이 yfinance 내부 로직에 맡김 (Anti-blocking 자동 처리)
+        data = yf.download(search_tickers, period="6mo", progress=True, threads=True)
     except Exception as e:
-        print(f"다운로드 실패: {e}")
+        log(f"다운로드 중 치명적 에러: {e}")
         return []
 
     if data.empty:
+        log("yf.download 결과가 비어있습니다. (IP 차단 또는 티커 오류 가능성)")
         return []
+    
+    log(f"다운로드 완료. 데이터 Shape: {data.shape}, Columns: {list(data.columns)[:5]}...")
     
     if 'Adj Close' in data.columns:
         closes = data['Adj Close']
     elif 'Close' in data.columns:
         closes = data['Close']
     else:
-        closes = data
+        # MultiIndex 처리 (yfinance 최신 버전)
+        # 만약 컬럼이 (Price, Ticker) 형태라면
+        try:
+             closes = data.xs('Adj Close', axis=1, level=0)
+        except:
+             try:
+                 closes = data.xs('Close', axis=1, level=0)
+             except:
+                 closes = data
+                 log("컬럼 구조 인식 불가. Raw data 사용.")
 
     if len(closes) < 61:
+        log(f"데이터 행 수 부족: {len(closes)} (최소 61 필요)")
         return []
 
     latest = closes.iloc[-1]
@@ -73,7 +67,7 @@ def get_market_cap_and_rs(ticker_info_list):
     q_cur = latest.get("QQQ", 0)
     q_prev = prev_60.get("QQQ", 0)
     q_chg = (q_cur / q_prev) if q_prev != 0 else 0
-    print(f"QQQ 변동률: {q_chg:.4f}")
+    log(f"QQQ 변동률 계산: {q_chg:.4f}")
 
     results = []
     
@@ -89,13 +83,8 @@ def get_market_cap_and_rs(ticker_info_list):
             chg = cur / prev
             rs = (chg / q_chg) - 1 if q_chg != 0 else 0
             
-            # 주식 수 (yf.Ticker)
-            # Ticker 호출 시에도 세션 적용은 어렵지만(내부 구현상), 
-            # 일단 yfinance가 최근 업데이트에서 자동 핸들링함.
-            # 실패 시 0 처리.
             try:
-                # 개별 티커 호출은 느리므로 예외처리만 잘 해둠
-                stock = yf.Ticker(t, session=session)
+                stock = yf.Ticker(t)
                 shares = stock.fast_info.get('shares', 0)
             except:
                 shares = 0
@@ -124,35 +113,25 @@ def main():
     ticker_info_list = get_tickers_from_excel(SOURCE_EXCEL_FILE)
     
     if not ticker_info_list:
-        print("⚠️ 엑셀 파일 로드 실패 또는 데이터 없음! (Fallback 모드로 진입합니다)")
-        # 주요 나스닥/S&P500 티커 Fallback
+        log("⚠️ 엑셀 파일 로드 실패 (Fallback 모드 진입)")
         ticker_info_list = [
             {"Ticker": "AAPL", "Sector": "Technology", "Industry": "Consumer Electronics"},
-            {"Ticker": "MSFT", "Sector": "Technology", "Industry": "Software - Infrastructure"},
-            {"Ticker": "NVDA", "Sector": "Technology", "Industry": "Semiconductors"},
-            {"Ticker": "GOOGL", "Sector": "Communication Services", "Industry": "Internet Content & Information"},
-            {"Ticker": "AMZN", "Sector": "Consumer Cyclical", "Industry": "Internet Retail"},
-            {"Ticker": "TSLA", "Sector": "Consumer Cyclical", "Industry": "Auto Manufacturers"},
-            {"Ticker": "META", "Sector": "Communication Services", "Industry": "Internet Content & Information"},
-            {"Ticker": "AMD", "Sector": "Technology", "Industry": "Semiconductors"},
-            {"Ticker": "NFLX", "Sector": "Communication Services", "Industry": "Entertainment"},
-            {"Ticker": "PLTR", "Sector": "Technology", "Industry": "Software - Infrastructure"}
+            {"Ticker": "MSFT", "Sector": "Technology", "Industry": "Software"},
+            {"Ticker": "TSLA", "Sector": "Consumer Cyclical", "Industry": "Auto Manufacturers"}
         ]
+    else:
+        log(f"엑셀 로드 성공: {len(ticker_info_list)}개")
     
-    # 실제 운영 시 제한 해제
-    # ticker_info_list = ticker_info_list[:100] 
-    
-    print(f"대상 티커: {len(ticker_info_list)}개")
-
     start_time = time.time()
     results = get_market_cap_and_rs(ticker_info_list)
     end_time = time.time()
     
-    print(f"수집 완료! 소요 시간: {end_time - start_time:.1f}초, 성공: {len(results)}개")
+    log(f"수집 완료! 소요 시간: {end_time - start_time:.1f}초, 성공: {len(results)}개")
 
     output_data = {
         "last_updated": time.strftime("%Y-%m-%d %H:%M:%S UTC"),
         "total_count": len(results),
+        "logs": DEBUG_LOGS,  # 로그 포함
         "data": results
     }
     
