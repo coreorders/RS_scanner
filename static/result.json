@@ -1,0 +1,30 @@
+{
+  "last_updated": "2026-01-11 12:50:48 UTC",
+  "total_count": 3,
+  "data": [
+    {
+      "Ticker": "SPRB",
+      "RS": -0.5691,
+      "Market Cap": "N/A",
+      "Price": 79.99,
+      "Sector": "Healthcare",
+      "Industry": "Biotechnology"
+    },
+    {
+      "Ticker": "PRAX",
+      "RS": 4.2344,
+      "Market Cap": "N/A",
+      "Price": 288.45,
+      "Sector": "Healthcare",
+      "Industry": "Biotechnology"
+    },
+    {
+      "Ticker": "CDTX",
+      "RS": NaN,
+      "Market Cap": "N/A",
+      "Price": NaN,
+      "Sector": "Healthcare",
+      "Industry": "Biotechnology"
+    }
+  ]
+}
