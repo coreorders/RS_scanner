@@ -1,340 +1,179 @@
-
-import yfinance as yf
 import pandas as pd
 import requests
-import concurrent.futures
+import yfinance as yf
+import time
+import io
+from concurrent.futures import ThreadPoolExecutor
 
 def get_tickers_from_google_sheet(url):
     """
-    구글 스프레드시트 CSV URL에서 티커를 읽어옵니다.
-    A열(첫 번째 열)을 티커로 간주하며, 첫 행이 'Ticker' 같은 헤더가 아니더라도 처리합니다.
+    구글 시트 CSV URL에서 티커 목록을 가져옵니다.
+    A열에 티커가 있다고 가정합니다.
     """
     try:
-        # 헤더 없이 일단 읽음
-        df = pd.read_csv(url, header=None)
+        response = requests.get(url)
+        response.raise_for_status()
         
+        # CSV 데이터를 pandas DataFrame으로 읽기 (헤더 없음 가정)
+        # 만약 첫 줄이 티커라면 header=None을 써야 함.
+        # 사용자가 "A 열에서 티커를 긁어다가"라고 했고, 확인 결과 첫 줄부터 티커임 (LRN)
+        df = pd.read_csv(io.StringIO(response.text), header=None)
+        
+        # 첫 번째 컬럼을 티커로 간주
         if df.empty:
-            print("Google Sheet is empty.")
             return []
             
-        # 첫 번째 열(Column 0)이 티커
-        # 첫 행(Row 0)이 'Ticker', 'Symbol' 등 헤더 텍스트라면 제거
-        first_val = str(df.iloc[0, 0]).upper()
-        if first_val in ['TICKER', 'SYMBOL', 'CODE', '티커', '종목코드']:
-            df = df.iloc[1:]
-            
-        result_list = []
-        for _, row in df.iterrows():
-            # A열 확보
-            t = str(row[0]).strip().upper()
-            if not t or t == 'NAN': continue
-            
-            # C/D열 등이 있으면 Sector/Industry로 쓸 수도 있지만, 
-            # 사용자 요청은 'A열'만 언급했으므로 나머지는 기본 N/A 처리하되
-            # 혹시 모르니 컬럼이 충분하면 가져옴
-            sec = 'N/A'
-            ind = 'N/A'
-            if len(df.columns) >= 3:
-                # 안전하게 가져오기
-                try: 
-                    s_val = str(row[1])
-                    if s_val and s_val != 'nan': sec = s_val
-                    
-                    i_val = str(row[2])
-                    if i_val and i_val != 'nan': ind = i_val
-                except: pass
-            
-            result_list.append({
-                "Ticker": t,
-                "Sector": sec,
-                "Industry": ind
-            })
-            
-        print(f"Loaded {len(result_list)} tickers from Google Sheet.")
-        return result_list
+        ticker_column = df.columns[0] # 0번 인덱스
+        tickers = df[ticker_column].dropna().unique().tolist()
+        
+        # fetch_and_save.py 호환성을 위해 딕셔너리 리스트로 변환
+        # (기존 로직이 {'Ticker': 'AAPL', ...} 형태를 기대할 수 있음)
+        ticker_info_list = [{'Ticker': str(t).strip().upper()} for t in tickers if str(t).strip()]
+        
+        return ticker_info_list
         
     except Exception as e:
-        print(f"Error reading Google Sheet: {e}")
+        print(f"구글 시트 로드 중 에러: {e}")
         return []
 
-def get_tickers_from_excel(file_path="RS분석툴.xlsm"):
+def get_tickers_from_excel(file_path):
     """
-    엑셀 파일에서 티커 및 부가 정보(Sector, Industry)를 읽어옵니다.
-    반환값: [{'Ticker': 'AAPL', 'Sector': 'Technoloy', 'Industry': 'Consumer Electronics'}, ...]
+    레거시 호환성을 위한 엑셀 읽기 함수 (현재는 사용되지 않을 수 있음)
     """
     try:
-        df = pd.read_excel(file_path, sheet_name=0, engine='openpyxl')
-        # 필요한 컬럼만 추출/확인
-        result_list = []
-        
-        if 'Ticker' in df.columns:
-            # NaN 제거
-            df = df.dropna(subset=['Ticker'])
-            
-            for _, row in df.iterrows():
-                t = str(row['Ticker']).strip().upper().replace('.', '-')
-                # Sector/Industry가 있으면 가져오고 없으면 빈 문자열
-                sec = row.get('Sector', '')
-                ind = row.get('Industry', '')
-                
-                result_list.append({
-                    "Ticker": t,
-                    "Sector": sec if pd.notna(sec) else 'N/A',
-                    "Industry": ind if pd.notna(ind) else 'N/A'
-                })
-                
-            print(f"Loaded {len(result_list)} tickers with info from Excel.")
-            return result_list
-        else:
-            print("Column 'Ticker' not found in Excel.")
-            return []
+        df = pd.read_excel(file_path, sheet_name=0)
+        tickers = df.iloc[:, 0].dropna().tolist() # 첫 번째 컬럼
+        return [{'Ticker': str(t).strip().upper()} for t in tickers]
     except Exception as e:
-        print(f"Error reading Excel tickers: {e}")
+        print(f"엑셀 로드 에러: {e}")
         return []
 
-import time
-import random
-
-def get_yf_session():
+def get_market_cap_and_rs(ticker_info_list, batch_size=20):
     """
-    Create a custom session with a FIXED browser-like User-Agent.
-    Rotating agents might trigger security flags on same IP.
+    티커 리스트를 받아 Market Cap과 RS를 계산합니다.
+    20개씩 배치로 처리하여 yfinance 부하를 조절합니다.
     """
-    session = requests.Session()
-    session.headers.update({
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-        "Accept": "*/*",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Connection": "keep-alive"
-    })
-    return session
-
-def get_ticker_details(ticker, need_metadata=False):
-    """
-    개별 종목의 발행주식수와 메타데이터(Sector, Industry)를 가져옵니다.
-    Rate Limit 방지를 위해 딜레이와 재시도를 포함합니다.
-    """
-    time.sleep(random.uniform(2.0, 4.0)) # Drastically increased delay for safety
-    
-    shares = 0
-    sector = None
-    industry = None
-    
-    for attempt in range(3): 
-        try:
-            # [Fix] Use custom session for Ticker to pass User-Agent
-            session = get_yf_session()
-            t = yf.Ticker(ticker, session=session)
-            
-            # 1. Shares
-            shares = t.fast_info.get('shares', 0)
-            
-            # 2. Metadata or fallback
-            if need_metadata or shares == 0:
-                try:
-                    # [Safety Update] Disable t.info for Sector/Industry to prevent IP blocking
-                    # Only fetch if absolutely necessary (e.g. shares=0), otherwise skip metadata
-                    if shares == 0:
-                        # Try to get shares from info if fast_info failed
-                         info = t.info
-                         shares = info.get('sharesOutstanding', 0)
-                         if shares == 0:
-                            shares = info.get('impliedSharesOutstanding', 0)
-                    
-                    # Disabled to prevent JSONDecodeError (blocking)
-                    # if need_metadata:
-                    #     info = t.info
-                    #     sector = info.get('sector', 'N/A')
-                    #     industry = info.get('industry', 'N/A')
-                except:
-                    pass
-            
-            if shares > 0:
-                return ticker, shares, sector, industry
-            time.sleep(1)
-        except:
-            time.sleep(1)
-            pass
-            
-    return ticker, shares, sector, industry
-
-def get_market_cap_and_rs(ticker_info_list, limit=None, progress_callback=None):
-    if progress_callback: progress_callback(0)
-        
-    if limit:
-        ticker_info_list = ticker_info_list[:limit]
-
-    tickers = [item['Ticker'] for item in ticker_info_list]
-    # Filter out invalid tickers
-    tickers = [t for t in tickers if t not in ['TICKER', 'SYMBOL', 'CODE', '종목코드', '티커', 'NAN', 'N/A']]
-    
-    base_info_map = {item['Ticker']: item for item in ticker_info_list if item['Ticker'] in tickers}
-
-    print(f"Fetching price data for {len(tickers)} tickers...")
-    if progress_callback: progress_callback(5)
-    
-    # Session setup
-    session = get_yf_session()
-    
-    # 1. Price Bulk Download
-    search_tickers = tickers + ["QQQ"]
-    data = pd.DataFrame()
-    
-    try:
-        data = yf.download(search_tickers, period="6mo", progress=True, threads=False, session=session) # threads=False for safety
-    except Exception as e:
-        print(f"Bulk download failed: {e}")
-        data = pd.DataFrame()
-
-    closes = pd.DataFrame()
-    use_bulk_data = False
-    
-    if not data.empty:
-        try:
-            if 'Adj Close' in data.columns:
-                closes = data['Adj Close']
-            elif 'Close' in data.columns:
-                closes = data['Close']
-            else:
-                try: closes = data.xs('Adj Close', axis=1, level=0)
-                except: closes = data
-            
-            if not closes.empty:
-                use_bulk_data = True
-        except:
-            use_bulk_data = False
-            
-    if not use_bulk_data or len(closes) < 30:
-        print("⚠️ Bulk data unavailable or insufficient. Switching to sequential price fetch.")
-        pass
-
     results = []
-    print("Fetching component details...")
+    total_tickers = len(ticker_info_list)
     
-    # QQQ Benchmark (Fallback)
-    q_chg = 0
-    if not use_bulk_data:
+    # QQQ 데이터 미리 확보 (벤치마크)
+    print("벤치마크 (QQQ) 데이터 다운로드 중...")
+    try:
+        qqq_data = yf.download("QQQ", period="6mo", progress=False)
+        if len(qqq_data) < 61:
+            print("경고: QQQ 데이터가 충분하지 않아 RS 계산이 부정확할 수 있습니다.")
+    except Exception as e:
+        print(f"QQQ 다운로드 실패: {e}")
+        qqq_data = pd.DataFrame()
+
+    for i in range(0, total_tickers, batch_size):
+        batch = ticker_info_list[i:i+batch_size]
+        batch_tickers = [item['Ticker'] for item in batch]
+        print(f"Processing batch {i} to {min(i+batch_size, total_tickers)}: {batch_tickers}")
+        
         try:
-            # Use download with session for QQQ fallback too
-            q_df = yf.download("QQQ", period="6mo", session=session, progress=False)
-            if not q_df.empty:
-                if 'Adj Close' in q_df.columns: q_hist = q_df['Adj Close']
-                elif 'Close' in q_df.columns: q_hist = q_df['Close']
-                else: q_hist = q_df.iloc[:,0] # Take first column if confused
-                
-                q_cur = float(q_hist.iloc[-1])
-                q_prev = float(q_hist.iloc[-61]) if len(q_hist) >= 61 else float(q_hist.iloc[0])
-                q_chg = (q_cur / q_prev) if q_prev != 0 else 0
-        except Exception as e: 
-            print(f"QQQ fetch failed: {e}")
-            pass
-    else:
-         try:
-             latest = closes.iloc[-1]
-             prev_60_idx = -61 if len(closes) >= 61 else 0
-             prev_60 = closes.iloc[prev_60_idx]
-             q_cur = latest.get("QQQ", 0)
-             q_prev = prev_60.get("QQQ", 0)
-             q_chg = (q_cur / q_prev) if q_prev != 0 else 0
-         except: pass
-    
-    # ... (Rest of the loop logic will be updated in next chunk if needed, but we focus on updating session usage) ...
-    # Wait, replace_file_content needs to match exact content. 
-    # I will replace up to the start of the loop to inject session usage.
-    
-    tasks = []
-    max_workers = 1 
-    processed_count = 0
-    total_count = len(tickers)
-    
-    with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        future_to_ticker = {}
-        for t in tickers:
-            base = base_info_map.get(t, {})
-            current_sec = base.get('Sector', 'N/A')
-            current_ind = base.get('Industry', 'N/A')
-            need_meta = (current_sec == 'N/A' or current_ind == 'N/A')
+            # 1. 주가 데이터 일괄 다운로드 (Price & RS용)
+            # 60영업일 전 데이터를 위해 충분히 6개월치를 가져옵니다.
+            data = yf.download(batch_tickers, period="6mo", progress=False, group_by='ticker')
             
-            future = executor.submit(get_ticker_details, t, need_meta)
-            future_to_ticker[future] = t
-
-        for future in concurrent.futures.as_completed(future_to_ticker):
-            t = future_to_ticker[future]
-            try:
-                _, share_count, fetched_sec, fetched_ind = future.result()
-                processed_count += 1
-                if progress_callback:
-                    current_progress = 30 + int((processed_count / total_count) * 60)
-                    progress_callback(current_progress)
-
-                cur_price = 0
-                prev_price = 0
+            # 2. 각 티커별 정보 처리
+            # 메타데이터(시총 등)는 별도 호출이 필요할 수 있으나, 
+            # yfinance 최신 버전에서는 download로 시총을 못 가져오므로 Ticker.info 접근 필요
+            # 속도를 위해 ThreadPool 사용
+            
+            with ThreadPoolExecutor(max_workers=5) as executor:
+                future_to_ticker = {executor.submit(process_single_ticker, ticker, data, qqq_data): ticker for ticker in batch_tickers}
                 
-                if use_bulk_data:
-                    try:
-                        cur_price = float(closes[t].iloc[-1])
-                        prev_60_idx = -61 if len(closes) >= 61 else 0
-                        prev_price = float(closes[t].iloc[prev_60_idx])
-                    except: pass
-                
-                # Fallback: Retry with session using yf.download
-                    for _ in range(3): 
-                        try:
-                            # Create a FRESH session
-                            session = get_yf_session()
-                            t_obj = yf.Ticker(t, session=session)
-                            
-                            # [Light Mode] Use fast_info ONLY. Avoid history() which triggers blocking.
-                            # We will only get current price. RS cannot be calculated (will be 0).
-                            if t_obj:
-                                cur_price = t_obj.fast_info.get('last_price', 0)
-                                prev_price = cur_price # Set same as current so RS becomes 0 (flat)
-                                break
-                        except:
-                            time.sleep(1)
-                            pass
-                        time.sleep(1)
-                
-                if pd.isna(cur_price) or cur_price == 0:
-                    print(f"Skipping {t}: No price data")
-                    continue
-                
-                # RS 계산 (데이터 없음 -> 0)
-                # chg = cur_price / prev_price
-                # rs = (chg / q_chg) - 1 if q_chg != 0 else 0
-                rs = 0 # History not available in Light Mode
-                
-                # Market Cap
-                mcap = cur_price * share_count
-                
-                # 메타데이터 병합
-                base = base_info_map.get(t, {})
-                final_sec = fetched_sec if fetched_sec and fetched_sec != 'N/A' else base.get('Sector', 'N/A')
-                final_ind = fetched_ind if fetched_ind and fetched_ind != 'N/A' else base.get('Industry', 'N/A')
-                
-                results.append({
-                    "Ticker": t,
-                    "Price": round(float(cur_price), 2),
-                    "RS": round(float(rs), 4),
-                    "MarketCap": round(float(mcap), 0),
-                    "Shares": share_count,
-                    "Sector": final_sec,
-                    "Industry": final_ind
-                })
-                
-            except Exception as e:
-                print(f"Error processing {t}: {e}")
-                continue
-
-    # Rank 부여
-    results.sort(key=lambda x: x['MarketCap'], reverse=True)
-    for i, r in enumerate(results):
-        r['MarketCapRank'] = i + 1
+                for future in future_to_ticker:
+                    res = future.result()
+                    if res:
+                        results.append(res)
+                        
+        except Exception as e:
+            print(f"Batch 처리 중 에러: {e}")
+            
+        # 딜레이 (옵션)
+        time.sleep(1)
         
     return results
 
-if __name__ == "__main__":
-    t = get_tickers_from_excel()
-    print(t[:5])
-    res = get_market_cap_and_rs(t, limit=10)
-    print(res)
+def process_single_ticker(ticker, batch_data, qqq_data):
+    """
+    단일 티커에 대한 RS 계산 및 Info 처리를 수행합니다.
+    """
+    try:
+        # 데이터 추출 (MultiIndex 처리)
+        if isinstance(batch_data.columns, pd.MultiIndex):
+             # batch_data['Close'][ticker] 와 같은 형태로 접근
+             if ticker in batch_data.columns.levels[0]:
+                 df = batch_data[ticker]
+             else:
+                 # 티커가 하나뿐일 경우 구조가 다를 수 있음 처리
+                 # download시 list로 넘겼으므로 보통 MultiIndex임.
+                 # 데이터가 없는 경우
+                 return None
+        else:
+            # 티커가 1개인 배치였을 경우
+            df = batch_data
+            
+        # Close Price 확인
+        if 'Close' not in df.columns or df.empty:
+            return None
+            
+        hist = df['Close']
+        idx_latest = -1
+        idx_60ago = -61
+        
+        if len(hist) < 61:
+            rs_val = None
+        else:
+            # RS 계산: [(전영업일 주가)/(60영업일전 주가)] / [(전영업일 QQQ)/(60영업일전 QQQ)] - 1
+            
+            stock_current = float(hist.iloc[idx_latest])
+            stock_60ago = float(hist.iloc[idx_60ago])
+            
+            if qqq_data.empty or len(qqq_data) < 61:
+                rs_val = 0
+            else:
+                # 안전한 float 변환 (Series vs Scalar)
+                q_curr = qqq_data['Close'].iloc[idx_latest]
+                q_60 = qqq_data['Close'].iloc[idx_60ago]
+                
+                qqq_current = float(q_curr.iloc[0]) if hasattr(q_curr, 'iloc') else float(q_curr)
+                qqq_60ago = float(q_60.iloc[0]) if hasattr(q_60, 'iloc') else float(q_60)
+                
+                if stock_60ago == 0 or qqq_60ago == 0:
+                    rs_val = 0
+                else:
+                    rs_val = ((stock_current / stock_60ago) / (qqq_current / qqq_60ago)) - 1
+        
+        # 메타데이터 (Market Cap 등) 
+        # Ticker.info 호출은 느릴 수 있음
+        try:
+            t = yf.Ticker(ticker)
+            info = t.info
+            market_cap = info.get('marketCap', 0)
+            sector = info.get('sector', 'N/A')
+            industry = info.get('industry', 'N/A')
+            
+            # 포메팅
+            mc_str = f"{market_cap / 1e9:.2f}B" if market_cap else "N/A"
+            
+        except Exception:
+            market_cap = 0
+            mc_str = "N/A"
+            sector = "N/A"
+            industry = "N/A"
+
+        return {
+            "Ticker": ticker,
+            "RS": round(rs_val, 4) if rs_val is not None else 0,
+            "Market Cap": mc_str,
+            "Price": round(float(hist.iloc[-1]), 2),
+            "Sector": sector,
+            "Industry": industry
+        }
+
+    except Exception as e:
+        print(f"Error processing {ticker}: {e}")
+        return None
