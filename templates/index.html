@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RS Scanner</title>
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.png') }}">
+    <style>
+        :root {
+            --bg-color: #121212;
+            --surface-color: #1e1e1e;
+            --primary-color: #00e676;
+            --text-color: #ffffff;
+            --text-secondary: #b0b0b0;
+            --danger-color: #ff5252;
+            --border-color: #333;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 95%;
+            /* 더 넓게 */
+            max-width: 1200px;
+            margin-top: 40px;
+            text-align: center;
+            flex-grow: 1;
+            /* Footer를 바닥으로 밀기 위함 */
+        }
+
+        h1 {
+            margin-bottom: 30px;
+        }
+
+        .info-box {
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 30px;
+            text-align: left;
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .highlight-danger {
+            color: var(--danger-color);
+            font-weight: bold;
+        }
+
+        button {
+            background-color: var(--primary-color);
+            color: #000;
+            border: none;
+            padding: 15px 40px;
+            font-size: 18px;
+            font-weight: bold;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        button:hover {
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+        }
+
+        #loading-ui {
+            display: none;
+            margin-top: 30px;
+        }
+
+        .spinner {
+            border: 4px solid #333;
+            border-top-color: var(--primary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        #result-area {
+            display: none;
+            margin-top: 40px;
+        }
+
+        .btn-group {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .download-btn {
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 14px;
+            transition: 0.2s;
+        }
+
+        .download-btn:hover {
+            background-color: #555;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background-color: var(--surface-color);
+            font-size: 13px;
+            /* 많은 컬럼을 위해 폰트 축소 */
+        }
+
+        th,
+        td {
+            text-align: left;
+            padding: 10px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        th {
+            cursor: pointer;
+            user-select: none;
+            background-color: #252525;
+            color: var(--text-secondary);
+        }
+
+        th:hover {
+            background-color: #333;
+        }
+
+        .rs-pos {
+            color: #00e676;
+        }
+
+        .rs-neg {
+            color: #ff5252;
+        }
+
+        footer {
+            width: 100%;
+            text-align: center;
+            padding: 20px;
+            color: #666;
+            font-size: 12px;
+            border-top: 1px solid var(--border-color);
+            margin-top: 50px;
+            padding-bottom: 30px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>🇺🇸 Lee's RS Scanner</h1>
+
+        <div class="info-box">
+            <p>1. <strong>상대 강도(RS)</strong>: 최근 60영업일 동안의 (개별주가 변동률 / QQQ 변동률) - 1<br>
+                2. <strong>시가총액</strong>: 현재 주가 × 발행주식수 (실시간 계산)<br>
+                3. <strong>데이터 출처</strong>: 'RS분석툴.xlsm' 파일의 티커 목록을 기반으로 Yahoo Finance에서 수집합니다.</p>
+            <p class="highlight-danger">⚠️ 주의: 과도한 조회(시간당 2회 이상)는 IP 차단을 유발할 수 있습니다. (현재 테스트 모드: 20개 제한)</p>
+        </div>
+
+        <button id="search-btn" onclick="startSearch()">🔍 조회하기</button>
+
+        <div id="loading-ui">
+            <div class="spinner"></div>
+            <p>데이터 조회 중입니다... <span id="progress-percent"
+                    style="font-weight:bold; color:var(--primary-color);">0%</span></p>
+        </div>
+
+        <div id="result-area">
+            <div class="btn-group">
+                <a href="/api/download/basic" class="download-btn">📥 엑셀 다운로드</a>
+            </div>
+
+            <table>
+                <thead>
+                    <tr>
+                        <th onclick="sortTable('Ticker')">Ticker ⬍</th>
+                        <th onclick="sortTable('MarketCap')">Market Cap ($) ⬍</th>
+                        <th onclick="sortTable('MarketCapRank')">MC Rank ⬍</th>
+                        <th onclick="sortTable('RS')">RS Score ⬍</th>
+                        <th onclick="sortTable('Sector')">Sector ⬍</th>
+                        <th onclick="sortTable('Industry')">Industry ⬍</th>
+                    </tr>
+                </thead>
+                <tbody id="table-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <footer>
+        RS scanner © 2026 | Idea by In-gyu Lee | Built by Dae-sik Min
+    </footer>
+
+    <script>
+        let globalData = [];
+        let sortDir = { key: '', asc: true };
+
+        async function startSearch() {
+            document.getElementById('search-btn').disabled = true;
+            document.getElementById('loading-ui').style.display = 'block';
+            document.getElementById('progress-percent').innerText = '0%'; // Reset
+            document.getElementById('result-area').style.display = 'none';
+
+            try {
+                await fetch('/api/screen');
+                pollStatus();
+            } catch (e) {
+                alert('오류 발생');
+                resetUI();
+            }
+        }
+
+        function pollStatus() {
+            const interval = setInterval(async () => {
+                try {
+                    const res = await fetch('/api/status');
+                    const json = await res.json();
+
+                    // Update Progress
+                    if (json.progress !== undefined) {
+                        document.getElementById('progress-percent').innerText = json.progress + '%';
+                    }
+
+                    if (json.status === 'done') {
+                        clearInterval(interval);
+                        globalData = json.data;
+                        renderTable(globalData);
+                        resetUI(true);
+                    }
+                } catch (e) {
+                    console.error(e);
+                }
+            }, 1000);
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('table-body');
+            tbody.innerHTML = '';
+            data.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                <td><strong>${item.Ticker}</strong></td>
+                <td>${Number(item.MarketCap).toLocaleString()}</td>
+                <td>${item.MarketCapRank}</td>
+                <td class="${item.RS > 0 ? 'rs-pos' : 'rs-neg'}">${item.RS.toFixed(4)}</td>
+                <td>${item.Sector}</td>
+                <td>${item.Industry}</td>
+            `;
+                tbody.appendChild(tr);
+            });
+            document.getElementById('result-area').style.display = 'block';
+        }
+
+        function sortTable(key) {
+            if (sortDir.key === key) sortDir.asc = !sortDir.asc;
+            else { sortDir.key = key; sortDir.asc = true; }
+
+            globalData.sort((a, b) => {
+                let valA = a[key];
+                let valB = b[key];
+
+                // 숫자 처리
+                if (typeof valA === 'string') valA = valA.toUpperCase();
+                if (typeof valB === 'string') valB = valB.toUpperCase();
+
+                if (valA < valB) return sortDir.asc ? -1 : 1;
+                if (valA > valB) return sortDir.asc ? 1 : -1;
+                return 0;
+            });
+            renderTable(globalData);
+        }
+
+        function resetUI(done = false) {
+            document.getElementById('loading-ui').style.display = 'none';
+            const btn = document.getElementById('search-btn');
+            btn.disabled = false;
+            if (done) btn.innerText = '✅ 조회 완료 (다시 조회)';
+        }
+    </script>
+
+</body>
+
+</html>
