@@ -202,8 +202,11 @@
         // 페이지 로드 시 자동 실행
         window.onload = function () {
             const today = new Date();
-            const dateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
-            // document.getElementById('page-title').innerText = `${dateStr} US Market RS Score`;
+            const kstDate = new Intl.DateTimeFormat('ko-KR', {
+                timeZone: 'Asia/Seoul',
+                year: 'numeric', month: '2-digit', day: '2-digit'
+            }).format(today);
+            document.getElementById('page-title').innerText = `${kstDate} US Market RS Score`;
 
             loadData();
         };
@@ -245,7 +248,7 @@
                             hour12: false
                         }).format(dateObj);
 
-                        document.getElementById('last-updated').innerText = `KST: ${kstStr}`;
+                        document.getElementById('last-updated').innerText = `Last update KST: ${kstStr}`;
                     } catch (e) {
                         document.getElementById('last-updated').innerText = `Last Updated: ${json.last_updated}`;
                     }
