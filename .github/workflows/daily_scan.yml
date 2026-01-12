@@ -3,7 +3,7 @@ name: Daily Stock Screen
 
 on:
   schedule:
-    # 매일 UTC 21:00 (한국 시간 오전 6:00) 실행
+    # 매일 UTC 21:05 (한국 시간 오전 6:05) 실행
     - cron: '5 21 * * *'
   # 수동 실행 버튼 (테스트용)
   workflow_dispatch:
