@@ -170,7 +170,18 @@
         <div id="result-area">
             <div class="btn-group">
                 <span id="result-count" style="font-size:14px; color:#aaa;"></span>
-                <button onclick="downloadExcel()" class="download-btn">📥 엑셀 다운로드</button>
+
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <input type="text" id="search-input" placeholder="Search..." onkeyup="handleSearch()"
+                        style="padding:10px; border-radius:4px; border:1px solid #333; background:#222; color:#fff;">
+
+                    <button id="toggle-mode-btn" onclick="toggleMode()" class="download-btn"
+                        style="background-color:#00e676; color:#000;">
+                        Show Sector/Industry WRS
+                    </button>
+
+                    <button onclick="downloadExcel()" class="download-btn">📥 엑셀 다운로드</button>
+                </div>
             </div>
 
             <table>
