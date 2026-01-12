@@ -175,9 +175,6 @@
                     <input type="text" id="search-input" placeholder="Search..."
                         style="padding:10px; border-radius:4px; border:1px solid #333; background:#222; color:#fff;">
 
-                    <button onclick="handleSearch()"
-                        style="background:none; border:none; cursor:pointer; font-size:18px;">🔍</button>
-
                     <button id="toggle-mode-btn" onclick="toggleMode()" class="download-btn"
                         style="background-color:#00e676; color:#000;">
                         Sector/Industry WRS
@@ -215,8 +212,17 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.17.5/xlsx.full.min.js"></script>
     <script>
+        // Global State & Data
         let globalData = [];
-        let sortDir = { key: 'RS', asc: false };
+        let groupedData = []; // for WRS mode
+
+        // App State
+        let appState = {
+            mode: 'INDIVIDUAL', // 'INDIVIDUAL' | 'WRS' | 'DRILLDOWN'
+            filterText: '',
+            drillDownKey: null, // "Sector|Industry"
+            sort: { key: 'RS', asc: false } // Default Sort: RS Descending
+        };
 
         // 페이지 로드 시 자동 실행
         window.onload = function () {
@@ -227,74 +233,193 @@
             }).format(today);
             document.getElementById('page-title').innerText = `${kstDate} US Market RS Score`;
 
+            // Enter Key Listener for Search
+            document.getElementById('search-input').addEventListener("keypress", function (event) {
+                if (event.key === "Enter") {
+                    event.preventDefault();
+                    handleSearch();
+                }
+            });
+
             loadData();
         };
 
         async function loadData() {
             const loader = document.getElementById('loading-msg');
-
             try {
-                // 정적 JSON 파일 로드 (GitHub Pages 호환: ./static/result.json)
+                // Fetch Data
                 const res = await fetch('./static/result.json?t=' + new Date().getTime());
+                if (res.status === 404) throw new Error("BOT_WORKING");
+                if (!res.ok) throw new Error("데이터 로드 실패 code: " + res.status);
 
-                if (res.status === 404) {
-                    // 404 means file was deleted and bot is working
-                    throw new Error("BOT_WORKING");
-                }
-
-                if (!res.ok) {
-                    throw new Error("데이터 로드 실패 code: " + res.status);
-                }
-
-                // [Fix] Python json.dump는 NaN을 표준이 아닌 'NaN'으로 출력할 수 있음.
-                // 브라우저 JSON.parse는 이를 에러로 처리하므로, 텍스트로 받아 치환 후 파싱.
                 const rawText = await res.text();
+                // Fix NaN issue
                 const sanitizedText = rawText.replace(/:\s*NaN/g, ': null');
                 const json = JSON.parse(sanitizedText);
 
+                // Initialize Data
                 globalData = json.data;
 
-                // 업데이트 시간 표시 (UTC + KST 변환)
+                // Time Display
                 if (json.last_updated) {
                     try {
-                        // "YYYY-MM-DD HH:MM:SS UTC" 포맷을 ISO로 변환하여 Date 객체 생성
                         const dateObj = new Date(json.last_updated.replace(' UTC', 'Z').replace(' ', 'T'));
-
                         const kstStr = new Intl.DateTimeFormat('ko-KR', {
                             timeZone: 'Asia/Seoul',
                             year: 'numeric', month: '2-digit', day: '2-digit',
                             hour: '2-digit', minute: '2-digit', second: '2-digit',
                             hour12: false
                         }).format(dateObj);
-
                         document.getElementById('last-updated').innerText = `Last update KST: ${kstStr}`;
                     } catch (e) {
                         document.getElementById('last-updated').innerText = `Last Updated: ${json.last_updated}`;
                     }
                 }
 
-                renderTable(globalData);
-                document.getElementById('result-count').innerText = `Total: ${globalData.length} Items`;
+                // Initial Render
+                updateUI();
 
                 document.getElementById('result-area').style.display = 'block';
-                loader.style.display = 'none'; // 로딩 메시지 숨김
+                loader.style.display = 'none';
 
             } catch (e) {
                 if (e.message === "BOT_WORKING") {
-                    loader.innerHTML = `
-                        <div style="padding: 20px; border: 2px dashed var(--primary-color); border-radius: 10px; display: inline-block;">
-                            <h3 style="margin:0 0 10px 0;">🤖 봇이 데이터를 수집하고 있습니다!</h3>
-                            <p style="margin:0;">현재 GitHub Actions가 최신 데이터를 긁어오고 있습니다.<br>
-                            잠시 후(약 5~10분)에 새로고침 해주세요.</p>
-                        </div>
-                    `;
-                    loader.style.color = "var(--text-color)";
+                    loader.innerHTML = `<div style="padding: 20px; border: 2px dashed var(--primary-color);"><h3>🤖 봇이 작업중입니다!</h3><p>잠시 후 새로고침 해주세요.</p></div>`;
                 } else {
-                    console.error(e);
-                    loader.innerText = "데이터 로드 실패: " + e.message;
-                    loader.style.color = "var(--danger-color)";
+                    loader.innerText = "Error: " + e.message;
                 }
             }
+        }
+
+        // --- Core Functions ---
+
+        function toggleMode() {
+            const btn = document.getElementById('toggle-mode-btn');
+
+            if (appState.mode === 'INDIVIDUAL' || appState.mode === 'DRILLDOWN') {
+                // Switch to WRS Mode
+                appState.mode = 'WRS';
+                appState.drillDownKey = null;
+                calculateWRS();
+
+                // Set Default Sort for WRS Mode (WRS Descending)
+                appState.sort = { key: 'WRS', asc: false };
+
+                btn.innerText = "Individual RS"; // Toggle Text
+                btn.style.backgroundColor = "#ff5252"; // Change color
+            } else {
+                // Switch back to Individual Mode
+                appState.mode = 'INDIVIDUAL';
+                appState.drillDownKey = null;
+
+                // Set Default Sort for Individual Mode (RS Descending)
+                appState.sort = { key: 'RS', asc: false };
+
+                btn.innerText = "Sector/Industry WRS";
+                btn.style.backgroundColor = "#00e676";
+            }
+
+            // Reset Search
+            document.getElementById('search-input').value = '';
+            appState.filterText = '';
+
+            updateUI();
+        }
+
+        function updateUI() {
+            const data = getFilteredAndSortedData();
+            renderTable(data);
+            document.getElementById('result-count').innerText = `Total: ${data.length} Items`;
+
+            // DrillDown Button State Override
+            const btn = document.getElementById('toggle-mode-btn');
+            if (appState.mode === 'DRILLDOWN') {
+                btn.innerText = "Back to WRS List";
+                btn.style.backgroundColor = "#2196f3"; // Blue
+            }
+        }
+
+        function handleSearch() {
+            const input = document.getElementById('search-input');
+            appState.filterText = input.value.trim().toLowerCase();
+            updateUI();
+        }
+
+        function calculateWRS() {
+            const groups = {};
+
+            globalData.forEach(item => {
+                const key = `${item.Sector}|${item.Industry}`;
+                if (!groups[key]) {
+                    groups[key] = {
+                        Sector: item.Sector,
+                        Industry: item.Industry,
+                        Count: 0,
+                        TotalMC: 0,
+                        WeightedSum: 0
+                    };
+                }
+
+                const mc = parseMarketCap(item['Market Cap']);
+                const rs = item.RS || 0;
+                if (mc > 0) {
+                    groups[key].Count += 1;
+                    groups[key].TotalMC += mc;
+                    groups[key].WeightedSum += (mc * rs);
+                }
+            });
+
+            groupedData = Object.values(groups).map(g => {
+                return {
+                    Sector: g.Sector,
+                    Industry: g.Industry,
+                    Count: g.Count,
+                    WRS: g.TotalMC > 0 ? (g.WeightedSum / g.TotalMC) : 0,
+                    TotalMC: g.TotalMC
+                };
+            });
+        }
+
+        function getFilteredAndSortedData() {
+            let targetData = [];
+
+            if (appState.mode === 'INDIVIDUAL') {
+                targetData = globalData;
+            } else if (appState.mode === 'WRS') {
+                targetData = groupedData;
+            } else if (appState.mode === 'DRILLDOWN') {
+                const [sec, ind] = appState.drillDownKey.split('|');
+                targetData = globalData.filter(d => d.Sector === sec && d.Industry === ind);
+            }
+
+            // 1. Filter
+            if (appState.filterText) {
+                targetData = targetData.filter(item => {
+                    return Object.values(item).some(val =>
+                        String(val).toLowerCase().includes(appState.filterText)
+                    );
+                });
+            }
+
+            // 2. Sort
+            targetData.sort((a, b) => {
+                let valA = a[appState.sort.key];
+                let valB = b[appState.sort.key];
+
+                if (appState.sort.key === 'Market Cap') {
+                    valA = parseMarketCap(valA);
+                    valB = parseMarketCap(valB);
+                }
+
+                if (typeof valA === 'string') valA = valA.toUpperCase();
+                if (typeof valB === 'string') valB = valB.toUpperCase();
+
+                if (valA < valB) return appState.sort.asc ? -1 : 1;
+                if (valA > valB) return appState.sort.asc ? 1 : -1;
+                return 0;
+            });
+
+            return targetData;
         }
 
         function parseMarketCap(mcStr) {
@@ -308,85 +433,119 @@
         }
 
         function renderTable(data) {
+            const thead = document.querySelector('table thead tr');
             const tbody = document.getElementById('table-body');
             tbody.innerHTML = '';
 
-            // 랭크 계산 (시총 기준) - 문자열 파싱 후 정렬
-            const sortedByMC = [...data].sort((a, b) => parseMarketCap(b['Market Cap']) - parseMarketCap(a['Market Cap']));
-            const rankMap = {};
-            sortedByMC.forEach((item, idx) => rankMap[item.Ticker] = idx + 1);
+            if (appState.mode === 'WRS') {
+                thead.innerHTML = `
+                    <th onclick="sortTable('Sector')">Sector ⬍</th>
+                    <th onclick="sortTable('Industry')">Industry ⬍</th>
+                    <th onclick="sortTable('Count')">Total Count ⬍</th>
+                    <th onclick="sortTable('WRS')">WRS Score ⬍</th>
+                `;
+            } else {
+                thead.innerHTML = `
+                    <th onclick="sortTable('Ticker')">Ticker ⬍</th>
+                    <th onclick="sortTable('Price')">Price ($) ⬍</th>
+                    <th onclick="sortTable('Market Cap')">Market Cap ($) ⬍</th>
+                    <th onclick="sortTable('MarketCapRank')">MC Rank ⬍</th>
+                    <th onclick="sortTable('RS')">RS Score ⬍</th>
+                    <th onclick="sortTable('Sector')">Sector ⬍</th>
+                    <th onclick="sortTable('Industry')">Industry ⬍</th>
+                `;
+            }
+
+            // Rank Calc for Individual/Drilldown
+            if (appState.mode !== 'WRS') {
+                const sortedRef = [...data].sort((a, b) => parseMarketCap(b['Market Cap']) - parseMarketCap(a['Market Cap']));
+                const rankMap = {};
+                sortedRef.forEach((item, idx) => rankMap[item.Ticker] = idx + 1);
+                data.forEach(item => item.MarketCapRank = rankMap[item.Ticker]);
+            }
 
             data.forEach(item => {
-                // MC Rank는 계산된 값 사용
-                item.MarketCapRank = rankMap[item.Ticker];
-
-                // Market Cap 표시
-                // JSON에서 이미 '3.08B' 형태로 옴. 숫자가 아니면 그대로 출력.
-                let mcDisplay = item['Market Cap'];
-                if (typeof mcDisplay === 'number') {
-                    mcDisplay = '$' + mcDisplay.toLocaleString();
-                }
-
                 const tr = document.createElement('tr');
-                tr.innerHTML = `
-                <td><strong>${item.Ticker}</strong></td>
-                <td>$${Number(item.Price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
-                <td>${mcDisplay}</td>
-                <td>${item.MarketCapRank}</td>
-                <td class="${item.RS > 0 ? 'rs-pos' : 'rs-neg'}">${Number(item.RS).toFixed(4)}</td>
-                <td>${item.Sector}</td>
-                <td>${item.Industry}</td>
-            `;
+
+                if (appState.mode === 'WRS') {
+                    tr.style.cursor = 'pointer';
+                    tr.ondblclick = () => enterDrillDown(item.Sector, item.Industry);
+                    tr.title = "Double click to see details";
+
+                    tr.innerHTML = `
+                        <td>${item.Sector}</td>
+                        <td>${item.Industry}</td>
+                        <td>${item.Count}</td>
+                        <td class="${item.WRS > 0 ? 'rs-pos' : 'rs-neg'}">${item.WRS.toFixed(4)}</td>
+                    `;
+                } else {
+                    let mcDisplay = item['Market Cap'];
+                    if (typeof mcDisplay === 'number') mcDisplay = '$' + mcDisplay.toLocaleString();
+
+                    tr.innerHTML = `
+                        <td><strong>${item.Ticker}</strong></td>
+                        <td>$${Number(item.Price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                        <td>${mcDisplay}</td>
+                        <td>${item.MarketCapRank}</td>
+                        <td class="${item.RS > 0 ? 'rs-pos' : 'rs-neg'}">${Number(item.RS).toFixed(4)}</td>
+                        <td>${item.Sector}</td>
+                        <td>${item.Industry}</td>
+                    `;
+                }
                 tbody.appendChild(tr);
             });
         }
 
+        function enterDrillDown(sector, industry) {
+            appState.mode = 'DRILLDOWN';
+            appState.drillDownKey = `${sector}|${industry}`;
+            appState.filterText = '';
+            document.getElementById('search-input').value = '';
+            // Reset to RS sort for drilldown
+            appState.sort = { key: 'RS', asc: false };
+            updateUI();
+        }
+
         function sortTable(key) {
-            if (sortDir.key === key) sortDir.asc = !sortDir.asc;
-            else { sortDir.key = key; sortDir.asc = true; }
-
-            globalData.sort((a, b) => {
-                let valA = a[key];
-                let valB = b[key];
-
-                // Market Cap 특수 처리
-                if (key === 'Market Cap') {
-                    valA = parseMarketCap(valA);
-                    valB = parseMarketCap(valB);
-                }
-
-                if (typeof valA === 'string') valA = valA.toUpperCase();
-                if (typeof valB === 'string') valB = valB.toUpperCase();
-
-                if (valA < valB) return sortDir.asc ? -1 : 1;
-                if (valA > valB) return sortDir.asc ? 1 : -1;
-                return 0;
-            });
-            renderTable(globalData);
+            if (appState.sort.key === key) appState.sort.asc = !appState.sort.asc;
+            else { appState.sort.key = key; appState.sort.asc = true; }
+            updateUI();
         }
 
         function downloadExcel() {
-            if (globalData.length === 0) return alert('데이터가 없습니다.');
+            const data = getFilteredAndSortedData();
+            if (data.length === 0) return alert('데이터가 없습니다.');
 
-            // SheetJS (xlsx.full.min.js) 활용하여 클라이언트에서 엑셀 생성
             const wb = XLSX.utils.book_new();
+            let excelData = [];
+            let fileName = "";
 
-            // 컬럼 순서 조정용 복사본
-            const excelData = globalData.map(item => ({
-                Ticker: item.Ticker,
-                Price: item.Price,
-                MarketCap: parseMarketCap(item['Market Cap']),
-                MarketCapRank: item.MarketCapRank,
-                RS: item.RS,
-                Sector: item.Sector,
-                Industry: item.Industry,
-                Shares: item.Shares
-            }));
+            if (appState.mode === 'WRS') {
+                excelData = data.map(item => ({
+                    Sector: item.Sector,
+                    Industry: item.Industry,
+                    TotalCount: item.Count,
+                    WRS_Score: item.WRS
+                }));
+                fileName = `WRS_Score_${new Date().toISOString().slice(0, 10)}.xlsx`;
+            } else {
+                excelData = data.map(item => ({
+                    Ticker: item.Ticker,
+                    Price: item.Price,
+                    MarketCap: parseMarketCap(item['Market Cap']),
+                    MarketCapRank: item.MarketCapRank,
+                    RS: item.RS,
+                    Sector: item.Sector,
+                    Industry: item.Industry,
+                    Shares: item.Shares
+                }));
+                const prefix = appState.mode === 'DRILLDOWN' ? 'Sector_Detail_' : 'RS_Scanner_';
+                fileName = `${prefix}${new Date().toISOString().slice(0, 10)}.xlsx`;
+            }
 
             const ws = XLSX.utils.json_to_sheet(excelData);
-            XLSX.utils.book_append_sheet(wb, ws, "RS_Scanner");
-
-            XLSX.writeFile(wb, `RS_Scanner_${new Date().toISOString().slice(0, 10)}.xlsx`);
+            XLSX.utils.book_append_sheet(wb, ws, "Data");
+            XLSX.writeFile(wb, fileName);
         }
     </script>
 
