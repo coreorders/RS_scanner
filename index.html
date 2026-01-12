@@ -172,12 +172,15 @@
                 <span id="result-count" style="font-size:14px; color:#aaa;"></span>
 
                 <div style="display:flex; gap:10px; align-items:center;">
-                    <input type="text" id="search-input" placeholder="Search..." onkeyup="handleSearch()"
+                    <input type="text" id="search-input" placeholder="Search..."
                         style="padding:10px; border-radius:4px; border:1px solid #333; background:#222; color:#fff;">
+
+                    <button onclick="handleSearch()"
+                        style="background:none; border:none; cursor:pointer; font-size:18px;">🔍</button>
 
                     <button id="toggle-mode-btn" onclick="toggleMode()" class="download-btn"
                         style="background-color:#00e676; color:#000;">
-                        Show Sector/Industry WRS
+                        Sector/Industry WRS
                     </button>
 
                     <button onclick="downloadExcel()" class="download-btn">📥 엑셀 다운로드</button>
