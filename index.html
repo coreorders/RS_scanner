@@ -306,8 +306,6 @@
                 // Set Default Sort for WRS Mode (WRS Descending)
                 appState.sort = { key: 'WRS', asc: false };
 
-                btn.innerText = "Individual RS"; // Toggle Text
-                btn.style.backgroundColor = "#ff5252"; // Change color
             } else {
                 // Switch back to Individual Mode
                 appState.mode = 'INDIVIDUAL';
@@ -315,9 +313,6 @@
 
                 // Set Default Sort for Individual Mode (RS Descending)
                 appState.sort = { key: 'RS', asc: false };
-
-                btn.innerText = "Sector/Industry WRS";
-                btn.style.backgroundColor = "#00e676";
             }
 
             // Reset Search
@@ -328,15 +323,50 @@
         }
 
         function updateUI() {
+            const btn = document.getElementById('toggle-mode-btn');
+            const subtitle = document.getElementById('mode-subtitle');
+
+            // 1. Update Subtitle & Button Colors
+            if (appState.mode === 'INDIVIDUAL') {
+                // Currently INDIV: Show Blue Subtitle
+                subtitle.innerText = "Individual RS";
+                subtitle.style.color = "#2196f3"; // Blue
+
+                // Button: Action to go to WRS (Red)
+                btn.innerText = "Sector/Industry WRS";
+                btn.style.backgroundColor = "#ff5252";
+
+            } else if (appState.mode === 'WRS') {
+                // Currently WRS: Show Red Subtitle
+                subtitle.innerText = "Sector/Industry WRS";
+                subtitle.style.color = "#ff5252"; // Red
+
+                // Button: Action to go to INDIV (Blue)
+                btn.innerText = "Individual RS";
+                btn.style.backgroundColor = "#2196f3";
+
+            } else if (appState.mode === 'DRILLDOWN') {
+                // Drilldown (basically Indiv view but restricted)
+                subtitle.innerText = "Sector Detail View";
+                subtitle.style.color = "#00e676"; // Green or stick to Blue
+
+                btn.innerText = "Back to WRS List";
+                btn.style.backgroundColor = "#ff5252"; // Go back to WRS logic
+            }
+
+            // 2. Render Data
             const data = getFilteredAndSortedData();
             renderTable(data);
             document.getElementById('result-count').innerText = `Total: ${data.length} Items`;
 
-            // DrillDown Button State Override
-            const btn = document.getElementById('toggle-mode-btn');
-            if (appState.mode === 'DRILLDOWN') {
-                btn.innerText = "Back to WRS List";
-                btn.style.backgroundColor = "#2196f3"; // Blue
+            // 3. Table Layout Adjustment (Compact center for WRS)
+            const tableElement = document.querySelector('table');
+            if (appState.mode === 'WRS') {
+                tableElement.style.width = 'auto'; // Shrink to fit
+                tableElement.style.margin = '0 auto'; // Center
+            } else {
+                tableElement.style.width = '100%'; // Full width
+                tableElement.style.margin = '0';
             }
         }
 
@@ -440,10 +470,10 @@
 
             if (appState.mode === 'WRS') {
                 thead.innerHTML = `
-                    <th onclick="sortTable('Sector')">Sector ⬍</th>
-                    <th onclick="sortTable('Industry')">Industry ⬍</th>
-                    <th onclick="sortTable('Count')">Total Count ⬍</th>
-                    <th onclick="sortTable('WRS')">WRS Score ⬍</th>
+                    <th onclick="sortTable('Sector')" style="text-align: center;">Sector ⬍</th>
+                    <th onclick="sortTable('Industry')" style="text-align: center;">Industry ⬍</th>
+                    <th onclick="sortTable('Count')" style="text-align: center;">Total Count ⬍</th>
+                    <th onclick="sortTable('WRS')" style="text-align: center;">WRS Score ⬍</th>
                 `;
             } else {
                 thead.innerHTML = `
@@ -474,10 +504,10 @@
                     tr.title = "Double click to see details";
 
                     tr.innerHTML = `
-                        <td>${item.Sector}</td>
-                        <td>${item.Industry}</td>
-                        <td>${item.Count}</td>
-                        <td class="${item.WRS > 0 ? 'rs-pos' : 'rs-neg'}">${item.WRS.toFixed(4)}</td>
+                        <td style="text-align: center; white-space: nowrap;">${item.Sector}</td>
+                        <td style="text-align: center; white-space: nowrap;">${item.Industry}</td>
+                        <td style="text-align: center;">${item.Count}</td>
+                        <td class="${item.WRS > 0 ? 'rs-pos' : 'rs-neg'}" style="text-align: center;">${item.WRS.toFixed(4)}</td>
                     `;
                 } else {
                     let mcDisplay = item['Market Cap'];
