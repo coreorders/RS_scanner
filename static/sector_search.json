@@ -4486,5 +4486,181 @@
   "FISV": {
     "Sector": "N/A",
     "Industry": "N/A"
+  },
+  "NVDA": {
+    "Sector": "Technology",
+    "Industry": "Semiconductors"
+  },
+  "BRK.B": {
+    "Sector": "N/A",
+    "Industry": "N/A"
+  },
+  "BRK.A": {
+    "Sector": "N/A",
+    "Industry": "N/A"
+  },
+  "BHP": {
+    "Sector": "Basic Materials",
+    "Industry": "Other Industrial Metals & Mining"
+  },
+  "RKLB": {
+    "Sector": "Industrials",
+    "Industry": "Aerospace & Defense"
+  },
+  "MCHP": {
+    "Sector": "Technology",
+    "Industry": "Semiconductors"
+  },
+  "SLF": {
+    "Sector": "Financial Services",
+    "Industry": "Insurance - Diversified"
+  },
+  "ASTS": {
+    "Sector": "Technology",
+    "Industry": "Communication Equipment"
+  },
+  "CG": {
+    "Sector": "Financial Services",
+    "Industry": "Asset Management"
+  },
+  "HEI.A": {
+    "Sector": "N/A",
+    "Industry": "N/A"
+  },
+  "Q": {
+    "Sector": "Technology",
+    "Industry": "Semiconductor Equipment & Materials"
+  },
+  "AA": {
+    "Sector": "Basic Materials",
+    "Industry": "Aluminum"
+  },
+  "FOX": {
+    "Sector": "Communication Services",
+    "Industry": "Entertainment"
+  },
+  "JEF": {
+    "Sector": "Financial Services",
+    "Industry": "Capital Markets"
+  },
+  "GIL": {
+    "Sector": "Consumer Cyclical",
+    "Industry": "Apparel Manufacturing"
+  },
+  "TPG": {
+    "Sector": "Financial Services",
+    "Industry": "Asset Management"
+  },
+  "WBS": {
+    "Sector": "N/A",
+    "Industry": "N/A"
+  },
+  "ARWR": {
+    "Sector": "Healthcare",
+    "Industry": "Biotechnology"
+  },
+  "CAVA": {
+    "Sector": "Consumer Cyclical",
+    "Industry": "Restaurants"
+  },
+  "GSAT": {
+    "Sector": "Communication Services",
+    "Industry": "Telecom Services"
+  },
+  "MOG.A": {
+    "Sector": "N/A",
+    "Industry": "N/A"
+  },
+  "BA-A": {
+    "Sector": "N/A",
+    "Industry": "N/A"
+  },
+  "FORM": {
+    "Sector": "Technology",
+    "Industry": "Semiconductor Equipment & Materials"
+  },
+  "VSCO": {
+    "Sector": "Consumer Cyclical",
+    "Industry": "Apparel Retail"
+  },
+  "GPCR": {
+    "Sector": "Healthcare",
+    "Industry": "Biotechnology"
+  },
+  "WFC-L": {
+    "Sector": "N/A",
+    "Industry": "N/A"
+  },
+  "LNTH": {
+    "Sector": "Healthcare",
+    "Industry": "Drug Manufacturers - Specialty & Generic"
+  },
+  "BGSI": {
+    "Sector": "Consumer Cyclical",
+    "Industry": "Auto & Truck Dealerships"
+  },
+  "BLLN": {
+    "Sector": "Healthcare",
+    "Industry": "Diagnostics & Research"
+  },
+  "BAC-L": {
+    "Sector": "N/A",
+    "Industry": "N/A"
+  },
+  "FUL": {
+    "Sector": "Basic Materials",
+    "Industry": "Specialty Chemicals"
+  },
+  "LEN.B": {
+    "Sector": "N/A",
+    "Industry": "N/A"
+  },
+  "REVG": {
+    "Sector": "Industrials",
+    "Industry": "Farm & Heavy Construction Machinery"
+  },
+  "ALB-A": {
+    "Sector": "N/A",
+    "Industry": "N/A"
+  },
+  "XMTR": {
+    "Sector": "Industrials",
+    "Industry": "Industrial Distribution"
+  },
+  "FRPT": {
+    "Sector": "Consumer Defensive",
+    "Industry": "Packaged Foods"
+  },
+  "TNET": {
+    "Sector": "Industrials",
+    "Industry": "Staffing & Employment Services"
+  },
+  "ASH": {
+    "Sector": "Basic Materials",
+    "Industry": "Specialty Chemicals"
+  },
+  "DOO": {
+    "Sector": "Consumer Cyclical",
+    "Industry": "Recreational Vehicles"
+  },
+  "PHIN": {
+    "Sector": "Consumer Cyclical",
+    "Industry": "Auto Parts"
+  },
+  "MKC.V": {
+    "Sector": "N/A",
+    "Industry": "N/A"
+  },
+  "CTA-B": {
+    "Sector": "N/A",
+    "Industry": "N/A"
+  },
+  "WHLRL": {
+    "Sector": "N/A",
+    "Industry": "N/A"
+  },
+  "AFJKU": {
+    "Sector": "N/A",
+    "Industry": "N/A"
   }
 }
