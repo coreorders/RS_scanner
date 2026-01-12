@@ -380,8 +380,10 @@
             const groups = {};
 
             globalData.forEach(item => {
-                // [Strict Exclusion] Exclude N/A Market Cap from WRS
-                if (!item['Market Cap'] || item['Market Cap'] === 'N/A') return;
+                // [Strict Exclusion] Exclude items if MC, Sector, or Industry is invalid
+                if (!item['Market Cap'] || item['Market Cap'] === 'N/A' || item['Market Cap'] === 'null') return;
+                if (!item['Sector'] || item['Sector'] === 'N/A' || item['Sector'] === 'null' || item['Sector'] === 'nan') return;
+                if (!item['Industry'] || item['Industry'] === 'N/A' || item['Industry'] === 'null' || item['Industry'] === 'nan') return;
 
                 const key = `${item.Sector}|${item.Industry}`;
                 if (!groups[key]) {
