@@ -203,7 +203,7 @@
         window.onload = function () {
             const today = new Date();
             const dateStr = today.toISOString().split('T')[0]; // YYYY-MM-DD
-            document.getElementById('page-title').innerText = `${dateStr} US Market RS Score`;
+            // document.getElementById('page-title').innerText = `${dateStr} US Market RS Score`;
 
             loadData();
         };
@@ -245,7 +245,7 @@
                             hour12: false
                         }).format(dateObj);
 
-                        document.getElementById('last-updated').innerText = `Last Updated: ${json.last_updated} / (KST: ${kstStr})`;
+                        document.getElementById('last-updated').innerText = `KST: ${kstStr}`;
                     } catch (e) {
                         document.getElementById('last-updated').innerText = `Last Updated: ${json.last_updated}`;
                     }
