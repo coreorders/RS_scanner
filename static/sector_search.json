@@ -4464,8 +4464,8 @@
     "Industry": "N/A"
   },
   "BULZ": {
-    "Sector": "N/A",
-    "Industry": "N/A"
+    "Sector": "ETF",
+    "Industry": "ETF"
   },
   "CCZ": {
     "Sector": "N/A",
@@ -4476,12 +4476,12 @@
     "Industry": "N/A"
   },
   "FNGS": {
-    "Sector": "N/A",
-    "Industry": "N/A"
+    "Sector": "ETF",
+    "Industry": "ETF"
   },
   "FNGO": {
-    "Sector": "N/A",
-    "Industry": "N/A"
+    "Sector": "ETF",
+    "Industry": "ETF"
   },
   "FISV": {
     "Sector": "N/A",
@@ -4662,5 +4662,29 @@
   "AFJKU": {
     "Sector": "N/A",
     "Industry": "N/A"
+  },
+  "HL-B": {
+    "Sector": "N/A",
+    "Industry": "N/A"
+  },
+  "VAC": {
+    "Sector": "Consumer Cyclical",
+    "Industry": "Resorts & Casinos"
+  },
+  "TRNS": {
+    "Sector": "Industrials",
+    "Industry": "Specialty Business Services"
+  },
+  "PSIX": {
+    "Sector": "Industrials",
+    "Industry": "Specialty Industrial Machinery"
+  },
+  "INOD": {
+    "Sector": "Technology",
+    "Industry": "Information Technology Services"
+  },
+  "PKX": {
+    "Sector": "Basic Materials",
+    "Industry": "Steel"
   }
 }
