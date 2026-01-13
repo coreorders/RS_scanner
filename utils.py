@@ -15,7 +15,7 @@ import os
 
 # 전역 캐시 변수
 SECTOR_CACHE_FILE = "static/sector_search.json"
-SECTOR_CACHE = {}
+SECTOR_CACHE = {} # This line will be changed
 
 def load_sector_cache():
     global SECTOR_CACHE
@@ -240,84 +240,85 @@ def process_single_ticker(ticker, batch_data, qqq_data):
             else:
                 # 안전한 float 변환 (Series vs Scalar)
                 q_curr = qqq_data['Close'].iloc[idx_latest]
-                q_60 = qqq_data['Close'].iloc[idx_60ago]
-                
-                qqq_current = float(q_curr.iloc[0]) if hasattr(q_curr, 'iloc') else float(q_curr)
-                qqq_60ago = float(q_60.iloc[0]) if hasattr(q_60, 'iloc') else float(q_60)
-                
-                if stock_60ago == 0 or qqq_60ago == 0:
-                    rs_val = 0
-                else:
-                    rs_val = ((stock_current / stock_60ago) / (qqq_current / qqq_60ago)) - 1
+        # ... (RS Calculation logic remains same) ...
+        # Calculate RS
+        try:
+            latest_price = df['Close'].iloc[-1]
+            price_60_ago = df['Close'].iloc[0] # Approx 60 days
+            
+            stock_return = (latest_price - price_60_ago) / price_60_ago
+            
+            qqq_latest = qqq_data['Close'].iloc[-1]
+            qqq_60_ago = qqq_data['Close'].iloc[0]
+            qqq_return = (qqq_latest - qqq_60_ago) / qqq_60_ago
+            
+            rs_score = stock_return - qqq_return
+        except:
+            rs_score = 0
+            latest_price = 0
         
         # 메타데이터 (Market Cap, Sector, Industry)
-        t = yf.Ticker(ticker)
+        # For Metadata, loop up using sanitied ticker
+        t = yf.Ticker(yf_ticker)
         
-        market_cap = 0
+        # 1. Sector/Industry (Cache Check) uses ORIGINAL ticker key usually, 
+        # but for API fetch we must use yf_ticker.
+        # Let's keep cache key as valid yf_ticker to avoid confusion, OR use original.
+        # User list has original. Let's try to stick to original for cache key if possible, 
+        # but the cached data implies 'what returns from API'.
+        # Actually simplest is: Use ORIGINAL for UI/Result, use YF_TICKER for API.
+        
+        cached = SECTOR_CACHE.get(original_ticker) 
         sector = "N/A"
         industry = "N/A"
-
-        # 1. Sector  Industry (캐시 우선)
-        cached_info = SECTOR_CACHE.get(ticker)
         
-        use_cache = False
-        if cached_info:
-            c_sec = str(cached_info.get('Sector', '')).strip().upper()
-            c_ind = str(cached_info.get('Industry', '')).strip().upper()
-            
-            # 유효하지 않은 값 리스트
-            invalid_values = ['N/A', 'NAN', 'NONE', '', 'NULL']
-            
-            if c_sec not in invalid_values and c_ind not in invalid_values:
-                use_cache = True
-                sector = cached_info.get('Sector')
-                industry = cached_info.get('Industry')
-            else:
-                # 캐시에 있지만 N/A인 경우 -> 재시도 대상
-                # print(f"[{ticker}] 캐시된 정보가 N/A여서 재시도합니다.") # 너무 시끄러울 수 있어서 생략하거나 필요시 주석 해제
-                pass 
-        
-        if not use_cache:
-            # 캐시 미스 또는 N/A 재시도: Info 호출
-            try:
-                info = t.info
-                new_sec = info.get('sector', 'N/A')
-                new_ind = info.get('industry', 'N/A')
-                
-                # 유의미한 정보가 구해졌을 때만 업데이트 (혹은 N/A라도 업데이트해서 다음 호출 방지? 
-                # -> 사용자는 "채워지길" 원하므로 계속 시도하는게 맞음. 
-                # 단, 너무 잦은 호출 방지를 위해 하루에 한 번만 등 제약이 있으면 좋지만 일단은 매번 시도)
-                
-                sector = new_sec
-                industry = new_ind
-                
-                # 캐시 업데이트 (메모리)
-                SECTOR_CACHE[ticker] = {
-                    "Sector": sector,
-                    "Industry": industry
-                }
-            except Exception:
-                pass
+        # Check Cache
+        if cached and cached.get('Sector') not in ['N/A', 'nan', 'NONE'] and cached.get('Industry') not in ['N/A', 'nan', 'NONE']:
+            sector = cached['Sector']
+            industry = cached['Industry']
+        else:
+            # Fetch Metadata
+            if sector == "N/A" and industry == "N/A":
+                try:
+                    info = t.info 
+                    
+                    quote_type = info.get('quoteType', '').upper()
+                    
+                    if 'ETF' in quote_type:
+                        sector = 'ETF'
+                        industry = 'ETF' # User requested both to be ETF
+                    elif 'ETN' in quote_type: 
+                        sector = 'ETN'
+                        industry = 'ETN' # User requested both to be ETN
+                    else:
+                        sector = info.get('sector', 'N/A')
+                        industry = info.get('industry', 'N/A')
 
-        # 2. Market Cap (실시간 우선 - fast_info 사용)
-        # fast_info는 별도의 가벼운 엔드포인트를 쓰므로 차단 위험이 낮고 데이터가 실시간임.
+                    if not sector: sector = 'N/A'
+                    if not industry: industry = 'N/A'
+                        
+                    # Save to Cache using ORIGINAL key for consistency
+                    SECTOR_CACHE[original_ticker] = {'Sector': sector, 'Industry': industry}
+                except:
+                    sector = 'N/A'
+                    industry = 'N/A'
+
+        # 2. Market Cap (Fast Info)
+        market_cap = 0
         try:
             market_cap = t.fast_info['market_cap']
-        except Exception:
-            # 실패 시 N/A
+        except:
             pass
             
-        mc_str = f"{market_cap / 1e9:.2f}B" if market_cap else "N/A"
-
         return {
-            "Ticker": ticker,
-            "RS": round(rs_val, 4) if rs_val is not None else 0,
-            "Market Cap": mc_str,
-            "Price": round(float(hist.iloc[-1]), 2),
-            "Sector": sector,
-            "Industry": industry
+            'Ticker': original_ticker, # Return original for UI
+            'Price': float(latest_price),
+            'Market Cap': f"{market_cap / 1e9:.2f}B" if market_cap else "N/A",
+            'RS': float(rs_score),
+            'Sector': sector,
+            'Industry': industry
         }
 
     except Exception as e:
-        print(f"Error processing {ticker}: {e}")
+        print(f"Error processing {original_ticker}: {e}")
         return None

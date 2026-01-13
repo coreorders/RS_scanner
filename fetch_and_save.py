@@ -54,6 +54,9 @@ def main():
         print(f"수집 중 에러 발생: {e}")
         results = []
     
+    # Save Sector Cache (Persistence)
+    save_sector_cache()
+
     end_time = time.time()
     duration = end_time - start_time
     
