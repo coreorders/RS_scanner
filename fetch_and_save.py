@@ -48,10 +48,10 @@ def main():
     
     # 병렬 처리 함수 실행 (20개씩 동시 작업)
     try:
-        result_data = utils.get_market_cap_and_rs(ticker_info_list)
+        results = utils.get_market_cap_and_rs(ticker_info_list)
     except Exception as e:
         print(f"수집 중 에러 발생: {e}")
-        result_data = []
+        results = []
     
     # Save Sector Cache (Persistence)
     utils.save_sector_cache()
