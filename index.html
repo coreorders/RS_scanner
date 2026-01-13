@@ -505,8 +505,9 @@
 
                 if (appState.mode === 'WRS') {
                     tr.style.cursor = 'pointer';
-                    tr.ondblclick = () => enterDrillDown(item.Sector, item.Industry);
-                    tr.title = "Double click to see details";
+                    // [Change] Double click -> Single click
+                    tr.onclick = () => enterDrillDown(item.Sector, item.Industry);
+                    tr.title = "Click to see details";
 
                     tr.innerHTML = `
                         <td style="text-align: center; white-space: nowrap;">${item.Sector}</td>
@@ -518,8 +519,11 @@
                     let mcDisplay = item['Market Cap'];
                     if (typeof mcDisplay === 'number') mcDisplay = '$' + mcDisplay.toLocaleString();
 
+                    // [Change] Ticker Link
+                    const tickerLink = `<a href="https://finance.yahoo.com/quote/${item.Ticker}/" target="_blank" style="color: inherit; text-decoration: underline;">${item.Ticker}</a>`;
+
                     tr.innerHTML = `
-                        <td><strong>${item.Ticker}</strong></td>
+                        <td><strong>${tickerLink}</strong></td>
                         <td>$${Number(item.Price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         <td>${mcDisplay}</td>
                         <td>${item.MarketCapRank}</td>
