@@ -4492,12 +4492,12 @@
     "Industry": "Semiconductors"
   },
   "BRK.B": {
-    "Sector": "N/A",
-    "Industry": "N/A"
+    "Sector": "Financial Services",
+    "Industry": "Insurance - Diversified"
   },
   "BRK.A": {
-    "Sector": "N/A",
-    "Industry": "N/A"
+    "Sector": "Financial Services",
+    "Industry": "Insurance - Diversified"
   },
   "BHP": {
     "Sector": "Basic Materials",
@@ -4524,8 +4524,8 @@
     "Industry": "Asset Management"
   },
   "HEI.A": {
-    "Sector": "N/A",
-    "Industry": "N/A"
+    "Sector": "Industrials",
+    "Industry": "Aerospace & Defense"
   },
   "Q": {
     "Sector": "Technology",
@@ -4552,8 +4552,8 @@
     "Industry": "Asset Management"
   },
   "WBS": {
-    "Sector": "N/A",
-    "Industry": "N/A"
+    "Sector": "Financial Services",
+    "Industry": "Banks - Regional"
   },
   "ARWR": {
     "Sector": "Healthcare",
@@ -4568,8 +4568,8 @@
     "Industry": "Telecom Services"
   },
   "MOG.A": {
-    "Sector": "N/A",
-    "Industry": "N/A"
+    "Sector": "Industrials",
+    "Industry": "Aerospace & Defense"
   },
   "BA-A": {
     "Sector": "N/A",
