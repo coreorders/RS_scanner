@@ -7,7 +7,7 @@ import json
 import os
 import time
 # utils에 있는 강력한 병렬 처리 함수 가져오기
-import utils, get_tickers_from_google_sheet
+import utils
 
 # 설정
 # 기존 엑셀 대신 구글 시트 사용
