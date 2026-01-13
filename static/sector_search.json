@@ -4690,5 +4690,13 @@
   "BH.A": {
     "Sector": "Consumer Cyclical",
     "Industry": "Restaurants"
+  },
+  "TFIN": {
+    "Sector": "Financial Services",
+    "Industry": "Banks - Regional"
+  },
+  "BIO.B": {
+    "Sector": "Healthcare",
+    "Industry": "Medical Devices"
   }
 }
