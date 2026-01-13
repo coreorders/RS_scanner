@@ -2,13 +2,12 @@
 import pandas as pd
 import json
 import os
-import time
 import pandas as pd
 import json
 import os
 import time
 # utils에 있는 강력한 병렬 처리 함수 가져오기
-from utils import get_tickers_from_excel, get_market_cap_and_rs, get_tickers_from_google_sheet
+import utils, get_tickers_from_google_sheet
 
 # 설정
 # 기존 엑셀 대신 구글 시트 사용
@@ -22,9 +21,9 @@ def main():
         os.makedirs('static')
 
     print(f"[{time.strftime('%X')}] 구글 시트 데이터 로드 중...")
-    
-    # 1. 구글 시트에서 가져오기
-    ticker_info_list = get_tickers_from_google_sheet(GOOGLE_SHEET_URL)
+    # Load Tickers
+    print("구글 시트 데이터 로드 중...")
+    ticker_info_list = utils.get_tickers_from_google_sheet(GOOGLE_SHEET_URL)
     
     # 2. 실패 시 Fallback
     if not ticker_info_list:
@@ -49,10 +48,10 @@ def main():
     
     # 병렬 처리 함수 실행 (20개씩 동시 작업)
     try:
-        results = get_market_cap_and_rs(ticker_info_list)
+        result_data = utils.get_market_cap_and_rs(ticker_info_list)
     except Exception as e:
         print(f"수집 중 에러 발생: {e}")
-        results = []
+        result_data = []
     
     # Save Sector Cache (Persistence)
     utils.save_sector_cache()
