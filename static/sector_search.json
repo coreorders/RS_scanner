@@ -4686,5 +4686,9 @@
   "PKX": {
     "Sector": "Basic Materials",
     "Industry": "Steel"
+  },
+  "BH.A": {
+    "Sector": "Consumer Cyclical",
+    "Industry": "Restaurants"
   }
 }
