@@ -109,8 +109,11 @@ def get_market_cap_and_rs(ticker_info_list, batch_size=20):
         
         try:
             # 1. 주가 데이터 일괄 다운로드 (Price & RS용)
+            # Yahoo Finance용 포맷으로 변환 (점 -> 하이픈)
+            sanitized_batch_tickers = [t.replace('.', '-') for t in batch_tickers]
+            
             # 60영업일 전 데이터를 위해 충분히 6개월치를 가져옵니다.
-            data = yf.download(batch_tickers, period="6mo", progress=False, group_by='ticker')
+            data = yf.download(sanitized_batch_tickers, period="6mo", progress=False, group_by='ticker')
             
             # 2. 각 티커별 정보 처리
             # 메타데이터(시총 등)는 별도 호출이 필요할 수 있으나, 
@@ -171,8 +174,9 @@ def get_market_cap_and_rs(ticker_info_list, batch_size=20):
             print(f" -> Retry batch {batch}")
             
             try:
-                # 배치 다운로드
-                data = yf.download(batch, period="6mo", progress=False, group_by='ticker')
+                # 배치 다운로드 (Sanitized Ticker 사용)
+                sanitized_retry_batch = [t.replace('.', '-') for t in batch]
+                data = yf.download(sanitized_retry_batch, period="6mo", progress=False, group_by='ticker')
                 
                 # 병렬 처리 (메인 로직 재사용)
                 with ThreadPoolExecutor(max_workers=5) as executor:
