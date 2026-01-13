@@ -55,7 +55,7 @@ def main():
         results = []
     
     # Save Sector Cache (Persistence)
-    save_sector_cache()
+    utils.save_sector_cache()
 
     end_time = time.time()
     duration = end_time - start_time

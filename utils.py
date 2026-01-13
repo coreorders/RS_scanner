@@ -200,16 +200,19 @@ def get_market_cap_and_rs(ticker_info_list, batch_size=20):
     
     return results
 
-def process_single_ticker(ticker, batch_data, qqq_data):
+def process_single_ticker(original_ticker, batch_data, qqq_data):
     """
     단일 티커에 대한 RS 계산 및 Info 처리를 수행합니다.
     """
     try:
+        # Sanitize for API usage locally
+        yf_ticker = original_ticker.replace('.', '-')
+        
         # 데이터 추출 (MultiIndex 처리)
         if isinstance(batch_data.columns, pd.MultiIndex):
              # batch_data['Close'][ticker] 와 같은 형태로 접근
-             if ticker in batch_data.columns.levels[0]:
-                 df = batch_data[ticker]
+             if yf_ticker in batch_data.columns.levels[0]:
+                 df = batch_data[yf_ticker]
              else:
                  # 티커가 하나뿐일 경우 구조가 다를 수 있음 처리
                  # download시 list로 넘겼으므로 보통 MultiIndex임.
