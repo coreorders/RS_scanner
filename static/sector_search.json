@@ -4706,5 +4706,29 @@
   "CMS-B": {
     "Sector": "Utilities",
     "Industry": "Utilities - Regulated Electric"
+  },
+  "FOUR-A": {
+    "Sector": "N/A",
+    "Industry": "N/A"
+  },
+  "GHM": {
+    "Sector": "Industrials",
+    "Industry": "Specialty Industrial Machinery"
+  },
+  "QXO-B": {
+    "Sector": "N/A",
+    "Industry": "N/A"
+  },
+  "KRUS": {
+    "Sector": "Consumer Cyclical",
+    "Industry": "Restaurants"
+  },
+  "WSHP": {
+    "Sector": "Communication Services",
+    "Industry": "Internet Content & Information"
+  },
+  "NWPX": {
+    "Sector": "Basic Materials",
+    "Industry": "Steel"
   }
 }
