@@ -1,0 +1,78 @@
+{
+  "last_updated": "2026-01-14 07:12:31 UTC",
+  "total_count": 9,
+  "data": [
+    {
+      "Ticker": "GLDI",
+      "Price": 178.7790069580078,
+      "Market Cap": "N/A",
+      "RS": 0.07519476612025597,
+      "Sector": "ETF",
+      "Industry": "ETF"
+    },
+    {
+      "Ticker": "SHNY",
+      "Price": 155.77999877929688,
+      "Market Cap": "N/A",
+      "RS": 1.0364515355149972,
+      "Sector": "ETF",
+      "Industry": "ETF"
+    },
+    {
+      "Ticker": "AGM.A",
+      "Price": 131.16000366210938,
+      "Market Cap": "1.82B",
+      "RS": -0.13002284555012003,
+      "Sector": "Financial Services",
+      "Industry": "Credit Services"
+    },
+    {
+      "Ticker": "CTA-B",
+      "Price": 67.95999908447266,
+      "Market Cap": "N/A",
+      "RS": -0.12605257627457936,
+      "Sector": "Basic Materials",
+      "Industry": "Agricultural Inputs"
+    },
+    {
+      "Ticker": "SPRB",
+      "Price": 81.5,
+      "Market Cap": "0.09B",
+      "RS": -0.9879943781487286,
+      "Sector": "Healthcare",
+      "Industry": "Biotechnology"
+    },
+    {
+      "Ticker": "DIT",
+      "Price": 108.7699966430664,
+      "Market Cap": "0.07B",
+      "RS": -0.2166774612404564,
+      "Sector": "Consumer Defensive",
+      "Industry": "Food Distribution"
+    },
+    {
+      "Ticker": "CMS-B",
+      "Price": 77.18000030517578,
+      "Market Cap": "N/A",
+      "RS": -0.0751250032179207,
+      "Sector": "Utilities",
+      "Industry": "Utilities - Regulated Electric"
+    },
+    {
+      "Ticker": "HL-B",
+      "Price": 78.4999008178711,
+      "Market Cap": "N/A",
+      "RS": 0.4562004071442302,
+      "Sector": "Basic Materials",
+      "Industry": "Other Precious Metals & Mining"
+    },
+    {
+      "Ticker": "WHLRL",
+      "Price": 97.0,
+      "Market Cap": "N/A",
+      "RS": -0.47634308132599334,
+      "Sector": "N/A",
+      "Industry": "N/A"
+    }
+  ]
+}

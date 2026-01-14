@@ -4440,8 +4440,8 @@
     "Industry": "Education & Training Services"
   },
   "SHNY": {
-    "Sector": "N/A",
-    "Industry": "N/A"
+    "Sector": "ETF",
+    "Industry": "ETF"
   },
   "GDXU": {
     "Sector": "N/A",
@@ -4460,8 +4460,8 @@
     "Industry": "N/A"
   },
   "GLDI": {
-    "Sector": "N/A",
-    "Industry": "N/A"
+    "Sector": "ETF",
+    "Industry": "ETF"
   },
   "BULZ": {
     "Sector": "ETF",
@@ -4652,8 +4652,8 @@
     "Industry": "N/A"
   },
   "CTA-B": {
-    "Sector": "N/A",
-    "Industry": "N/A"
+    "Sector": "Basic Materials",
+    "Industry": "Agricultural Inputs"
   },
   "WHLRL": {
     "Sector": "N/A",
@@ -4664,8 +4664,8 @@
     "Industry": "N/A"
   },
   "HL-B": {
-    "Sector": "N/A",
-    "Industry": "N/A"
+    "Sector": "Basic Materials",
+    "Industry": "Other Precious Metals & Mining"
   },
   "VAC": {
     "Sector": "Consumer Cyclical",
@@ -4698,5 +4698,13 @@
   "BIO.B": {
     "Sector": "Healthcare",
     "Industry": "Medical Devices"
+  },
+  "AGM.A": {
+    "Sector": "Financial Services",
+    "Industry": "Credit Services"
+  },
+  "CMS-B": {
+    "Sector": "Utilities",
+    "Industry": "Utilities - Regulated Electric"
   }
 }
