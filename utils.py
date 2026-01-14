@@ -15,7 +15,21 @@ import os
 
 # 전역 캐시 변수
 SECTOR_CACHE_FILE = "static/sector_search.json"
-SECTOR_CACHE = {} # This line will be changed
+SECTOR_CACHE = {}
+
+def sanitize_ticker_for_yf(ticker):
+    """
+    Yahoo Finance용 티커 포맷 변환:
+    - 하이픈(-) 포함 시: '-' -> 'P' (예: BA-A -> BA-PA, QXO-B -> QXO-PB)
+    - 점(.) 포함 시: '.' -> '-' (예: AGM.A -> AGM-A)
+    """
+    if '-' in ticker:
+        # BA-A -> BA-PA, HL-B -> HL-PB
+        return ticker.replace('-', '-P')
+    elif '.' in ticker:
+        # AGM.A -> AGM-A
+        return ticker.replace('.', '-')
+    return ticker
 
 def load_sector_cache():
     global SECTOR_CACHE
@@ -109,8 +123,8 @@ def get_market_cap_and_rs(ticker_info_list, batch_size=20):
         
         try:
             # 1. 주가 데이터 일괄 다운로드 (Price & RS용)
-            # Yahoo Finance용 포맷으로 변환 (점 -> 하이픈)
-            sanitized_batch_tickers = [t.replace('.', '-') for t in batch_tickers]
+            # Yahoo Finance용 포맷으로 변환
+            sanitized_batch_tickers = [sanitize_ticker_for_yf(t) for t in batch_tickers]
             
             # 60영업일 전 데이터를 위해 충분히 6개월치를 가져옵니다.
             data = yf.download(sanitized_batch_tickers, period="6mo", progress=False, group_by='ticker')
@@ -175,7 +189,7 @@ def get_market_cap_and_rs(ticker_info_list, batch_size=20):
             
             try:
                 # 배치 다운로드 (Sanitized Ticker 사용)
-                sanitized_retry_batch = [t.replace('.', '-') for t in batch]
+                sanitized_retry_batch = [sanitize_ticker_for_yf(t) for t in batch]
                 data = yf.download(sanitized_retry_batch, period="6mo", progress=False, group_by='ticker')
                 
                 # 병렬 처리 (메인 로직 재사용)
@@ -210,7 +224,7 @@ def process_single_ticker(original_ticker, batch_data, qqq_data):
     """
     try:
         # Sanitize for API usage locally
-        yf_ticker = original_ticker.replace('.', '-')
+        yf_ticker = sanitize_ticker_for_yf(original_ticker)
         
         # 데이터 추출 (MultiIndex 처리)
         if isinstance(batch_data.columns, pd.MultiIndex):
