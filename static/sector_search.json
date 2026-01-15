@@ -4444,20 +4444,20 @@
     "Industry": "ETF"
   },
   "GDXU": {
-    "Sector": "N/A",
-    "Industry": "N/A"
+    "Sector": "ETF",
+    "Industry": "ETF"
   },
   "CPNG": {
     "Sector": "Consumer Cyclical",
     "Industry": "Internet Retail"
   },
   "DGP": {
-    "Sector": "N/A",
-    "Industry": "N/A"
+    "Sector": "ETF",
+    "Industry": "ETF"
   },
   "SLVO": {
-    "Sector": "N/A",
-    "Industry": "N/A"
+    "Sector": "ETF",
+    "Industry": "ETF"
   },
   "GLDI": {
     "Sector": "ETF",
@@ -4588,8 +4588,8 @@
     "Industry": "Biotechnology"
   },
   "WFC-L": {
-    "Sector": "N/A",
-    "Industry": "N/A"
+    "Sector": "Financial Services",
+    "Industry": "Banks - Diversified"
   },
   "LNTH": {
     "Sector": "Healthcare",
@@ -4604,24 +4604,24 @@
     "Industry": "Diagnostics & Research"
   },
   "BAC-L": {
-    "Sector": "N/A",
-    "Industry": "N/A"
+    "Sector": "Financial Services",
+    "Industry": "Banks - Diversified"
   },
   "FUL": {
     "Sector": "Basic Materials",
     "Industry": "Specialty Chemicals"
   },
   "LEN.B": {
-    "Sector": "N/A",
-    "Industry": "N/A"
+    "Sector": "Consumer Cyclical",
+    "Industry": "Residential Construction"
   },
   "REVG": {
     "Sector": "Industrials",
     "Industry": "Farm & Heavy Construction Machinery"
   },
   "ALB-A": {
-    "Sector": "N/A",
-    "Industry": "N/A"
+    "Sector": "Basic Materials",
+    "Industry": "Specialty Chemicals"
   },
   "XMTR": {
     "Sector": "Industrials",
@@ -4648,8 +4648,8 @@
     "Industry": "Auto Parts"
   },
   "MKC.V": {
-    "Sector": "N/A",
-    "Industry": "N/A"
+    "Sector": "Consumer Defensive",
+    "Industry": "Packaged Foods"
   },
   "CTA-B": {
     "Sector": "Basic Materials",
@@ -4660,8 +4660,8 @@
     "Industry": "N/A"
   },
   "AFJKU": {
-    "Sector": "N/A",
-    "Industry": "N/A"
+    "Sector": "Financial Services",
+    "Industry": "Shell Companies"
   },
   "HL-B": {
     "Sector": "Basic Materials",
@@ -4730,5 +4730,81 @@
   "NWPX": {
     "Sector": "Basic Materials",
     "Industry": "Steel"
+  },
+  "NGVT": {
+    "Sector": "Basic Materials",
+    "Industry": "Specialty Chemicals"
+  },
+  "CECO": {
+    "Sector": "Industrials",
+    "Industry": "Pollution & Treatment Controls"
+  },
+  "ATRO": {
+    "Sector": "Industrials",
+    "Industry": "Aerospace & Defense"
+  },
+  "APO-A": {
+    "Sector": "Financial Services",
+    "Industry": "Asset Management"
+  },
+  "WSO.B": {
+    "Sector": "Industrials",
+    "Industry": "Industrial Distribution"
+  },
+  "MTX": {
+    "Sector": "Basic Materials",
+    "Industry": "Specialty Chemicals"
+  },
+  "VVX": {
+    "Sector": "Industrials",
+    "Industry": "Aerospace & Defense"
+  },
+  "MCHPP": {
+    "Sector": "Technology",
+    "Industry": "Semiconductors"
+  },
+  "GEF.B": {
+    "Sector": "Consumer Cyclical",
+    "Industry": "Packaging & Containers"
+  },
+  "SPB": {
+    "Sector": "Consumer Defensive",
+    "Industry": "Household & Personal Products"
+  },
+  "MOG.B": {
+    "Sector": "Industrials",
+    "Industry": "Aerospace & Defense"
+  },
+  "ANPA": {
+    "Sector": "Industrials",
+    "Industry": "Specialty Business Services"
+  },
+  "BBW": {
+    "Sector": "Consumer Cyclical",
+    "Industry": "Specialty Retail"
+  },
+  "USB-A": {
+    "Sector": "N/A",
+    "Industry": "N/A"
+  },
+  "GRVY": {
+    "Sector": "Communication Services",
+    "Industry": "Electronic Gaming & Multimedia"
+  },
+  "AFJK": {
+    "Sector": "Financial Services",
+    "Industry": "Shell Companies"
+  },
+  "TAYD": {
+    "Sector": "Industrials",
+    "Industry": "Specialty Industrial Machinery"
+  },
+  "MPTI": {
+    "Sector": "Technology",
+    "Industry": "Electronic Components"
+  },
+  "SATA": {
+    "Sector": "Financial Services",
+    "Industry": "Asset Management"
   }
 }
