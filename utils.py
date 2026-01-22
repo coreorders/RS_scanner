@@ -251,37 +251,57 @@ def process_single_ticker(original_ticker, batch_data, qqq_data):
         
         try:
             # 1. Price 확보 (가장 중요)
-            latest_price = df['Close'].iloc[-1]
+            # df['Close']가 DataFrame일 수 있으므로 안전하게 처리
+            close_data = df['Close']
+            if isinstance(close_data, pd.DataFrame):
+                latest_price = close_data.iloc[-1].item()
+            else:
+                latest_price = close_data.iloc[-1]
+            latest_price = float(latest_price)  # Ensure float
             
             # 인덱스 설정 (최신 데이터가 뒤쪽에 있다고 가정)
-            # yfinance download(period='6mo')는 충분한 데이터를 가져옴 (약 125일)
-            # 우리는 확실히 67일 이상의 데이터가 필요함 (-1, -5, -61, -66 등)
-            
             if len(df['Close']) >= 67 and len(qqq_data['Close']) >= 67:
                 # 2. RS Calculation
                 # idx_latest = -1, idx_60ago = -61
                 stock_latest = latest_price
-                stock_60ago = df['Close'].iloc[-61]
-                qqq_latest = qqq_data['Close'].iloc[-1]
-                qqq_60ago = qqq_data['Close'].iloc[-61]
                 
+                # QQQ 처리 (MultiIndex DataFrame 대응)
+                qqq_close = qqq_data['Close']
+                if isinstance(qqq_close, pd.DataFrame):
+                    qqq_latest = qqq_close.iloc[-1].item()
+                    qqq_60ago = qqq_close.iloc[-61].item()
+                    qqq_5ago = qqq_close.iloc[-6].item()
+                    qqq_65ago = qqq_close.iloc[-66].item()
+                else:
+                    qqq_latest = qqq_close.iloc[-1]
+                    qqq_60ago = qqq_close.iloc[-61]
+                    qqq_5ago = qqq_close.iloc[-6]
+                    qqq_65ago = qqq_close.iloc[-66]
+
+                # Stock 과거 데이터 처리
+                if isinstance(close_data, pd.DataFrame):
+                    stock_60ago = close_data.iloc[-61].item()
+                    stock_5ago = close_data.iloc[-6].item()
+                    stock_65ago = close_data.iloc[-66].item()
+                else:
+                    stock_60ago = close_data.iloc[-61]
+                    stock_5ago = close_data.iloc[-6]
+                    stock_65ago = close_data.iloc[-66]
+
                 stock_ret = (stock_latest - stock_60ago) / stock_60ago if stock_60ago else 0
                 qqq_ret = (qqq_latest - qqq_60ago) / qqq_60ago if qqq_60ago else 0
                 rs_score = stock_ret - qqq_ret
 
                 # 3. RS5 Calculation
-                # idx_5ago = -6 (5영업일 전), idx_65ago = -66 (65영업일 전)
-                stock_5ago = df['Close'].iloc[-6]
-                stock_65ago = df['Close'].iloc[-66]
-                qqq_5ago = qqq_data['Close'].iloc[-6]
-                qqq_65ago = qqq_data['Close'].iloc[-66]
-                
                 stock_ret5 = (stock_5ago - stock_65ago) / stock_65ago if stock_65ago else 0
                 qqq_ret5 = (qqq_5ago - qqq_65ago) / qqq_65ago if qqq_65ago else 0
                 rs5_score = stock_ret5 - qqq_ret5
             else:
-                # 데이터 부족 시 0 처리
-                pass
+                # 데이터 부족 시 0 처리 및 이유 출력
+                if len(df['Close']) < 67:
+                    print(f"[Skip RS] {original_ticker}: Stock data too short ({len(df['Close'])} < 67)")
+                elif len(qqq_data['Close']) < 67:
+                    print(f"[Skip RS] {original_ticker}: QQQ data too short ({len(qqq_data['Close'])} < 67)")
                 
         except Exception as e:
             print(f"Calc Error {original_ticker}: {e}")
