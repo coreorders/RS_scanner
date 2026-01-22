@@ -1,0 +1,249 @@
+{
+  "last_updated": "2026-01-22 11:23:11 UTC",
+  "total_count": 27,
+  "data": [
+    {
+      "Ticker": "BRK.B",
+      "Price": 483.8299865722656,
+      "Market Cap": "1043.78B",
+      "RS": 0.0,
+      "RS5": 0.0,
+      "Sector": "Financial Services",
+      "Industry": "Insurance - Diversified"
+    },
+    {
+      "Ticker": "ORCL",
+      "Price": 173.8800048828125,
+      "Market Cap": "499.58B",
+      "RS": 0.0,
+      "RS5": 0.0,
+      "Sector": "Technology",
+      "Industry": "Software - Infrastructure"
+    },
+    {
+      "Ticker": "V",
+      "Price": 325.2799987792969,
+      "Market Cap": "627.76B",
+      "RS": 0.0,
+      "RS5": 0.0,
+      "Sector": "Financial Services",
+      "Industry": "Credit Services"
+    },
+    {
+      "Ticker": "XOM",
+      "Price": 133.61000061035156,
+      "Market Cap": "569.61B",
+      "RS": 0.0,
+      "RS5": 0.0,
+      "Sector": "Energy",
+      "Industry": "Oil & Gas Integrated"
+    },
+    {
+      "Ticker": "JNJ",
+      "Price": 218.00999450683594,
+      "Market Cap": "525.25B",
+      "RS": 0.0,
+      "RS5": 0.0,
+      "Sector": "Healthcare",
+      "Industry": "Drug Manufacturers - General"
+    },
+    {
+      "Ticker": "MA",
+      "Price": 527.5700073242188,
+      "Market Cap": "476.93B",
+      "RS": 0.0,
+      "RS5": 0.0,
+      "Sector": "Financial Services",
+      "Industry": "Credit Services"
+    },
+    {
+      "Ticker": "ASML",
+      "Price": 1360.0899658203125,
+      "Market Cap": "527.92B",
+      "RS": 0.0,
+      "RS5": 0.0,
+      "Sector": "Technology",
+      "Industry": "Semiconductor Equipment & Materials"
+    },
+    {
+      "Ticker": "COST",
+      "Price": 982.8599853515625,
+      "Market Cap": "436.35B",
+      "RS": 0.0,
+      "RS5": 0.0,
+      "Sector": "Consumer Defensive",
+      "Industry": "Discount Stores"
+    },
+    {
+      "Ticker": "NFLX",
+      "Price": 85.36000061035156,
+      "Market Cap": "361.70B",
+      "RS": 0.0,
+      "RS5": 0.0,
+      "Sector": "Communication Services",
+      "Industry": "Entertainment"
+    },
+    {
+      "Ticker": "PLTR",
+      "Price": 165.3300018310547,
+      "Market Cap": "394.05B",
+      "RS": 0.0,
+      "RS5": 0.0,
+      "Sector": "Technology",
+      "Industry": "Software - Infrastructure"
+    },
+    {
+      "Ticker": "BRK.A",
+      "Price": 724080.0,
+      "Market Cap": "1041.86B",
+      "RS": 0.0,
+      "RS5": 0.0,
+      "Sector": "Financial Services",
+      "Industry": "Insurance - Diversified"
+    },
+    {
+      "Ticker": "MU",
+      "Price": 389.1099853515625,
+      "Market Cap": "437.95B",
+      "RS": 0.0,
+      "RS5": 0.0,
+      "Sector": "Technology",
+      "Industry": "Semiconductors"
+    },
+    {
+      "Ticker": "ABBV",
+      "Price": 216.14999389648438,
+      "Market Cap": "382.02B",
+      "RS": 0.0,
+      "RS5": 0.0,
+      "Sector": "Healthcare",
+      "Industry": "Drug Manufacturers - General"
+    },
+    {
+      "Ticker": "BABA",
+      "Price": 168.6699981689453,
+      "Market Cap": "402.67B",
+      "RS": 0.0,
+      "RS5": 0.0,
+      "Sector": "Consumer Cyclical",
+      "Industry": "Internet Retail"
+    },
+    {
+      "Ticker": "HD",
+      "Price": 384.6400146484375,
+      "Market Cap": "382.91B",
+      "RS": 0.0,
+      "RS5": 0.0,
+      "Sector": "Consumer Cyclical",
+      "Industry": "Home Improvement Retail"
+    },
+    {
+      "Ticker": "GE",
+      "Price": 318.5,
+      "Market Cap": "337.75B",
+      "RS": 0.0,
+      "RS5": 0.0,
+      "Sector": "Industrials",
+      "Industry": "Aerospace & Defense"
+    },
+    {
+      "Ticker": "AMD",
+      "Price": 249.8000030517578,
+      "Market Cap": "406.68B",
+      "RS": 0.0,
+      "RS5": 0.0,
+      "Sector": "Technology",
+      "Industry": "Semiconductors"
+    },
+    {
+      "Ticker": "PG",
+      "Price": 146.05999755859375,
+      "Market Cap": "341.85B",
+      "RS": 0.0,
+      "RS5": 0.0,
+      "Sector": "Consumer Defensive",
+      "Industry": "Household & Personal Products"
+    },
+    {
+      "Ticker": "CVX",
+      "Price": 166.72999572753906,
+      "Market Cap": "335.93B",
+      "RS": 0.0,
+      "RS5": 0.0,
+      "Sector": "Energy",
+      "Industry": "Oil & Gas Integrated"
+    },
+    {
+      "Ticker": "UNH",
+      "Price": 347.75,
+      "Market Cap": "315.01B",
+      "RS": 0.0,
+      "RS5": 0.0,
+      "Sector": "Healthcare",
+      "Industry": "Healthcare Plans"
+    },
+    {
+      "Ticker": "KO",
+      "Price": 72.01000213623047,
+      "Market Cap": "309.91B",
+      "RS": 0.0,
+      "RS5": 0.0,
+      "Sector": "Consumer Defensive",
+      "Industry": "Beverages - Non-Alcoholic"
+    },
+    {
+      "Ticker": "WFC",
+      "Price": 86.12000274658203,
+      "Market Cap": "270.34B",
+      "RS": 0.0,
+      "RS5": 0.0,
+      "Sector": "Financial Services",
+      "Industry": "Banks - Diversified"
+    },
+    {
+      "Ticker": "MS",
+      "Price": 183.32000732421875,
+      "Market Cap": "291.35B",
+      "RS": 0.0,
+      "RS5": 0.0,
+      "Sector": "Financial Services",
+      "Industry": "Capital Markets"
+    },
+    {
+      "Ticker": "CAT",
+      "Price": 645.3800048828125,
+      "Market Cap": "302.35B",
+      "RS": 0.0,
+      "RS5": 0.0,
+      "Sector": "Industrials",
+      "Industry": "Farm & Heavy Construction Machinery"
+    },
+    {
+      "Ticker": "IBM",
+      "Price": 297.5400085449219,
+      "Market Cap": "278.12B",
+      "RS": 0.0,
+      "RS5": 0.0,
+      "Sector": "Technology",
+      "Industry": "Information Technology Services"
+    },
+    {
+      "Ticker": "AZN",
+      "Price": 90.54000091552734,
+      "Market Cap": "280.73B",
+      "RS": 0.0,
+      "RS5": 0.0,
+      "Sector": "Healthcare",
+      "Industry": "Drug Manufacturers - General"
+    },
+    {
+      "Ticker": "CSCO",
+      "Price": 73.69000244140625,
+      "Market Cap": "291.16B",
+      "RS": 0.0,
+      "RS5": 0.0,
+      "Sector": "Technology",
+      "Industry": "Communication Equipment"
+    }
+  ]
+}
