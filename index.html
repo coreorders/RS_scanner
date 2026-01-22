@@ -259,7 +259,11 @@
                 const json = JSON.parse(sanitizedText);
 
                 // Initialize Data
-                globalData = json.data;
+                globalData = json.data.map(item => {
+                    // RS_Chg 미리 계산 (정렬을 위해)
+                    item.RS_Chg = (item.RS || 0) - (item.RS5 || 0);
+                    return item;
+                });
 
                 // Time Display
                 if (json.last_updated) {
