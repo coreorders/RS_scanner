@@ -250,14 +250,17 @@ def process_single_ticker(original_ticker, batch_data, qqq_data):
         rs5_score = 0
         
         try:
+            # 1. Price 확보 (가장 중요)
+            latest_price = df['Close'].iloc[-1]
+            
             # 인덱스 설정 (최신 데이터가 뒤쪽에 있다고 가정)
             # yfinance download(period='6mo')는 충분한 데이터를 가져옴 (약 125일)
             # 우리는 확실히 67일 이상의 데이터가 필요함 (-1, -5, -61, -66 등)
             
             if len(df['Close']) >= 67 and len(qqq_data['Close']) >= 67:
-                # 1. Current RS (Latest vs 60 days ago)
+                # 2. RS Calculation
                 # idx_latest = -1, idx_60ago = -61
-                stock_latest = df['Close'].iloc[-1]
+                stock_latest = latest_price
                 stock_60ago = df['Close'].iloc[-61]
                 qqq_latest = qqq_data['Close'].iloc[-1]
                 qqq_60ago = qqq_data['Close'].iloc[-61]
@@ -266,7 +269,7 @@ def process_single_ticker(original_ticker, batch_data, qqq_data):
                 qqq_ret = (qqq_latest - qqq_60ago) / qqq_60ago if qqq_60ago else 0
                 rs_score = stock_ret - qqq_ret
 
-                # 2. RS5 (5 days ago vs 65 days ago)
+                # 3. RS5 Calculation
                 # idx_5ago = -6 (5영업일 전), idx_65ago = -66 (65영업일 전)
                 stock_5ago = df['Close'].iloc[-6]
                 stock_65ago = df['Close'].iloc[-66]
@@ -280,12 +283,13 @@ def process_single_ticker(original_ticker, batch_data, qqq_data):
                 # 데이터 부족 시 0 처리
                 pass
                 
-            latest_price = df['Close'].iloc[-1]
         except Exception as e:
-            # print(f"Calc Error {original_ticker}: {e}")
+            print(f"Calc Error {original_ticker}: {e}")
             rs_score = 0
             rs5_score = 0
-            latest_price = 0
+            # latest_price는 위에서 성공했으면 유지, 아니면 0
+            if 'latest_price' not in locals():
+                latest_price = 0
         
         # 메타데이터 (Market Cap, Sector, Industry)
         # For Metadata, loop up using sanitied ticker
