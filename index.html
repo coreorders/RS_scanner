@@ -402,16 +402,27 @@
                     groups[key].Count += 1;
                     groups[key].TotalMC += mc;
                     groups[key].WeightedSum += (mc * rs);
+
+                    // WRS5 계산을 위한 누적 (RS5는 5일 전 기준 RS)
+                    // 만약 RS5가 없다면 0으로 처리 (기존 데이터 호환)
+                    const rs5 = item.RS5 || 0;
+                    if (groups[key].WeightedSum5 === undefined) groups[key].WeightedSum5 = 0;
+                    groups[key].WeightedSum5 += (mc * rs5);
                 }
             });
 
             groupedData = Object.values(groups).map(g => {
+                const wrs = g.TotalMC > 0 ? (g.WeightedSum / g.TotalMC) : 0;
+                const wrs5 = g.TotalMC > 0 ? (g.WeightedSum5 / g.TotalMC) : 0;
+
                 return {
                     Sector: g.Sector,
                     Industry: g.Industry,
                     Count: g.Count,
-                    WRS: g.TotalMC > 0 ? (g.WeightedSum / g.TotalMC) : 0,
-                    TotalMC: g.TotalMC
+                    TotalMC: g.TotalMC,
+                    WRS: wrs,
+                    WRS5: wrs5,
+                    RS_Chg: wrs - wrs5
                 };
             });
         }
@@ -477,8 +488,9 @@
                 thead.innerHTML = `
                     <th onclick="sortTable('Sector')" style="text-align: center;">Sector ⬍</th>
                     <th onclick="sortTable('Industry')" style="text-align: center;">Industry ⬍</th>
+                    <th onclick="sortTable('TotalMC')" style="text-align: center;">Total MC ⬍</th>
                     <th onclick="sortTable('Count')" style="text-align: center;">Total Count ⬍</th>
-                    <th onclick="sortTable('WRS')" style="text-align: center;">WRS Score ⬍</th>
+                    <th onclick="sortTable('WRS')" style="text-align: center;">WRS ⬍</th>
                 `;
             } else {
                 thead.innerHTML = `
@@ -487,6 +499,8 @@
                     <th onclick="sortTable('Market Cap')">Market Cap ($) ⬍</th>
                     <th onclick="sortTable('MarketCapRank')">MC Rank ⬍</th>
                     <th onclick="sortTable('RS')">RS Score ⬍</th>
+                    <th onclick="sortTable('RS5')">RS5 ⬍</th>
+                    <th onclick="sortTable('RS_Chg')">RS Chg ⬍</th>
                     <th onclick="sortTable('Sector')">Sector ⬍</th>
                     <th onclick="sortTable('Industry')">Industry ⬍</th>
                 `;
@@ -512,6 +526,7 @@
                     tr.innerHTML = `
                         <td style="text-align: center; white-space: nowrap;">${item.Sector}</td>
                         <td style="text-align: center; white-space: nowrap;">${item.Industry}</td>
+                        <td style="text-align: center;">$${(item.TotalMC / 1e9).toFixed(2)}B</td>
                         <td style="text-align: center;">${item.Count}</td>
                         <td class="${item.WRS > 0 ? 'rs-pos' : 'rs-neg'}" style="text-align: center;">${item.WRS.toFixed(4)}</td>
                     `;
@@ -522,12 +537,20 @@
                     // [Change] Ticker Link
                     const tickerLink = `<a href="https://finance.yahoo.com/quote/${item.Ticker}/" target="_blank" style="color: inherit; text-decoration: underline;">${item.Ticker}</a>`;
 
+                    // RS5 및 변동폭 계산 (Individual 모드)
+                    // item.RS5는 백엔드에서 옴.
+                    const rsVal = item.RS || 0;
+                    const rs5Val = item.RS5 || 0;
+                    const rsChg = rsVal - rs5Val;
+
                     tr.innerHTML = `
                         <td><strong>${tickerLink}</strong></td>
                         <td>$${Number(item.Price).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
                         <td>${mcDisplay}</td>
                         <td>${item.MarketCapRank}</td>
-                        <td class="${item.RS > 0 ? 'rs-pos' : 'rs-neg'}">${Number(item.RS).toFixed(4)}</td>
+                        <td class="${rsVal > 0 ? 'rs-pos' : 'rs-neg'}">${Number(rsVal).toFixed(4)}</td>
+                        <td class="${rs5Val > 0 ? 'rs-pos' : 'rs-neg'}">${Number(rs5Val).toFixed(4)}</td>
+                        <td class="${rsChg > 0 ? 'rs-pos' : 'rs-neg'}">${Number(rsChg).toFixed(4)}</td>
                         <td>${item.Sector}</td>
                         <td>${item.Industry}</td>
                     `;
@@ -564,6 +587,7 @@
                 excelData = data.map(item => ({
                     Sector: item.Sector,
                     Industry: item.Industry,
+                    TotalMC: item.TotalMC,
                     TotalCount: item.Count,
                     WRS_Score: item.WRS
                 }));
@@ -575,6 +599,8 @@
                     MarketCap: parseMarketCap(item['Market Cap']),
                     MarketCapRank: item.MarketCapRank,
                     RS: item.RS,
+                    RS5: item.RS5,
+                    RS_Change: (item.RS || 0) - (item.RS5 || 0),
                     Sector: item.Sector,
                     Industry: item.Industry,
                     Shares: item.Shares

@@ -110,8 +110,8 @@ def get_market_cap_and_rs(ticker_info_list, batch_size=20):
     print("벤치마크 (QQQ) 데이터 다운로드 중...")
     try:
         qqq_data = yf.download("QQQ", period="6mo", progress=False)
-        if len(qqq_data) < 61:
-            print("경고: QQQ 데이터가 충분하지 않아 RS 계산이 부정확할 수 있습니다.")
+        if len(qqq_data) < 67:
+            print("경고: QQQ 데이터가 충분하지 않아 RS/RS5 계산이 부정확할 수 있습니다.")
     except Exception as e:
         print(f"QQQ 다운로드 실패: {e}")
         qqq_data = pd.DataFrame()
@@ -245,37 +245,46 @@ def process_single_ticker(original_ticker, batch_data, qqq_data):
             return None
             
         hist = df['Close']
-        idx_latest = -1
-        idx_60ago = -61
+        # Calculate RS (60일 변동) & RS5 (5일 전 기준 60일 변동)
+        rs_score = 0
+        rs5_score = 0
         
-        if len(hist) < 61:
-            rs_val = None
-        else:
-            # RS 계산: [(전영업일 주가)/(60영업일전 주가)] / [(전영업일 QQQ)/(60영업일전 QQQ)] - 1
-            
-            stock_current = float(hist.iloc[idx_latest])
-            stock_60ago = float(hist.iloc[idx_60ago])
-            
-            if qqq_data.empty or len(qqq_data) < 61:
-                rs_val = 0
-            else:
-                # 안전한 float 변환 (Series vs Scalar)
-                q_curr = qqq_data['Close'].iloc[idx_latest]
-        # ... (RS Calculation logic remains same) ...
-        # Calculate RS
         try:
+            # 인덱스 설정 (최신 데이터가 뒤쪽에 있다고 가정)
+            # yfinance download(period='6mo')는 충분한 데이터를 가져옴 (약 125일)
+            # 우리는 확실히 67일 이상의 데이터가 필요함 (-1, -5, -61, -66 등)
+            
+            if len(df['Close']) >= 67 and len(qqq_data['Close']) >= 67:
+                # 1. Current RS (Latest vs 60 days ago)
+                # idx_latest = -1, idx_60ago = -61
+                stock_latest = df['Close'].iloc[-1]
+                stock_60ago = df['Close'].iloc[-61]
+                qqq_latest = qqq_data['Close'].iloc[-1]
+                qqq_60ago = qqq_data['Close'].iloc[-61]
+                
+                stock_ret = (stock_latest - stock_60ago) / stock_60ago if stock_60ago else 0
+                qqq_ret = (qqq_latest - qqq_60ago) / qqq_60ago if qqq_60ago else 0
+                rs_score = stock_ret - qqq_ret
+
+                # 2. RS5 (5 days ago vs 65 days ago)
+                # idx_5ago = -6 (5영업일 전), idx_65ago = -66 (65영업일 전)
+                stock_5ago = df['Close'].iloc[-6]
+                stock_65ago = df['Close'].iloc[-66]
+                qqq_5ago = qqq_data['Close'].iloc[-6]
+                qqq_65ago = qqq_data['Close'].iloc[-66]
+                
+                stock_ret5 = (stock_5ago - stock_65ago) / stock_65ago if stock_65ago else 0
+                qqq_ret5 = (qqq_5ago - qqq_65ago) / qqq_65ago if qqq_65ago else 0
+                rs5_score = stock_ret5 - qqq_ret5
+            else:
+                # 데이터 부족 시 0 처리
+                pass
+                
             latest_price = df['Close'].iloc[-1]
-            price_60_ago = df['Close'].iloc[0] # Approx 60 days
-            
-            stock_return = (latest_price - price_60_ago) / price_60_ago
-            
-            qqq_latest = qqq_data['Close'].iloc[-1]
-            qqq_60_ago = qqq_data['Close'].iloc[0]
-            qqq_return = (qqq_latest - qqq_60_ago) / qqq_60_ago
-            
-            rs_score = stock_return - qqq_return
-        except:
+        except Exception as e:
+            # print(f"Calc Error {original_ticker}: {e}")
             rs_score = 0
+            rs5_score = 0
             latest_price = 0
         
         # 메타데이터 (Market Cap, Sector, Industry)
@@ -336,6 +345,7 @@ def process_single_ticker(original_ticker, batch_data, qqq_data):
             'Price': float(latest_price),
             'Market Cap': f"{market_cap / 1e9:.2f}B" if market_cap else "N/A",
             'RS': float(rs_score),
+            'RS5': float(rs5_score),
             'Sector': sector,
             'Industry': industry
         }
