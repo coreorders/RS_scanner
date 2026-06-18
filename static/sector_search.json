@@ -5850,5 +5850,53 @@
   "FLR": {
     "Sector": "Industrials",
     "Industry": "Engineering & Construction"
+  },
+  "CBRS": {
+    "Sector": "Technology",
+    "Industry": "Semiconductors"
+  },
+  "SPCX": {
+    "Sector": "Industrials",
+    "Industry": "Aerospace & Defense"
+  },
+  "AAOI": {
+    "Sector": "Technology",
+    "Industry": "Communication Equipment"
+  },
+  "FDXF": {
+    "Sector": "Industrials",
+    "Industry": "Integrated Freight & Logistics"
+  },
+  "BNY": {
+    "Sector": "Financial Services",
+    "Industry": "Banks - Diversified"
+  },
+  "CVSA": {
+    "Sector": "Consumer Defensive",
+    "Industry": "Education & Training Services"
+  },
+  "AEHR": {
+    "Sector": "Technology",
+    "Industry": "Semiconductor Equipment & Materials"
+  },
+  "UCTT": {
+    "Sector": "Technology",
+    "Industry": "Semiconductor Equipment & Materials"
+  },
+  "AGL": {
+    "Sector": "Healthcare",
+    "Industry": "Medical Care Facilities"
+  },
+  "MRX": {
+    "Sector": "N/A",
+    "Industry": "N/A"
+  },
+  "PDFS": {
+    "Sector": "Technology",
+    "Industry": "Software - Application"
+  },
+  "VIRT": {
+    "Sector": "Financial Services",
+    "Industry": "Capital Markets"
   }
 }
