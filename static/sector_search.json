@@ -5898,5 +5898,21 @@
   "VIRT": {
     "Sector": "Financial Services",
     "Industry": "Capital Markets"
+  },
+  "OXY": {
+    "Sector": "Energy",
+    "Industry": "Oil & Gas E&P"
+  },
+  "BMNP": {
+    "Sector": "N/A",
+    "Industry": "N/A"
+  },
+  "GOOGN": {
+    "Sector": "N/A",
+    "Industry": "N/A"
+  },
+  "GOOGM": {
+    "Sector": "N/A",
+    "Industry": "N/A"
   }
 }
