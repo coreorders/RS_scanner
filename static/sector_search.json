@@ -5914,5 +5914,33 @@
   "GOOGM": {
     "Sector": "N/A",
     "Industry": "N/A"
+  },
+  "CYD": {
+    "Sector": "N/A",
+    "Industry": "N/A"
+  },
+  "ECO": {
+    "Sector": "Industrials",
+    "Industry": "Marine Shipping"
+  },
+  "PARR": {
+    "Sector": "Energy",
+    "Industry": "Oil & Gas Refining & Marketing"
+  },
+  "YPF": {
+    "Sector": "Energy",
+    "Industry": "Oil & Gas Integrated"
+  },
+  "BAND": {
+    "Sector": "Technology",
+    "Industry": "Software - Infrastructure"
+  },
+  "YOU": {
+    "Sector": "Technology",
+    "Industry": "Software - Application"
+  },
+  "FET": {
+    "Sector": "Energy",
+    "Industry": "Oil & Gas Equipment & Services"
   }
 }
