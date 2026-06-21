@@ -5942,5 +5942,13 @@
   "FET": {
     "Sector": "Energy",
     "Industry": "Oil & Gas Equipment & Services"
+  },
+  "QNT": {
+    "Sector": "Technology",
+    "Industry": "Software - Application"
+  },
+  "MTUL": {
+    "Sector": "ETF",
+    "Industry": "ETF"
   }
 }
