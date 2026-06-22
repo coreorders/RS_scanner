@@ -5950,5 +5950,89 @@
   "MTUL": {
     "Sector": "ETF",
     "Industry": "ETF"
+  },
+  "MANE": {
+    "Sector": "Healthcare",
+    "Industry": "Biotechnology"
+  },
+  "AXTI": {
+    "Sector": "Technology",
+    "Industry": "Semiconductor Equipment & Materials"
+  },
+  "ICHR": {
+    "Sector": "Technology",
+    "Industry": "Semiconductor Equipment & Materials"
+  },
+  "SYRE": {
+    "Sector": "Healthcare",
+    "Industry": "Biotechnology"
+  },
+  "STM": {
+    "Sector": "Technology",
+    "Industry": "Semiconductors"
+  },
+  "ITRN": {
+    "Sector": "N/A",
+    "Industry": "N/A"
+  },
+  "BRKR": {
+    "Sector": "Healthcare",
+    "Industry": "Medical Devices"
+  },
+  "IONQ": {
+    "Sector": "Technology",
+    "Industry": "Computer Hardware"
+  },
+  "SEDG": {
+    "Sector": "Technology",
+    "Industry": "Solar"
+  },
+  "CENX": {
+    "Sector": "Basic Materials",
+    "Industry": "Aluminum"
+  },
+  "KNSA": {
+    "Sector": "Healthcare",
+    "Industry": "Drug Manufacturers - Specialty & Generic"
+  },
+  "TVTX": {
+    "Sector": "Healthcare",
+    "Industry": "Biotechnology"
+  },
+  "VSECU": {
+    "Sector": "Industrials",
+    "Industry": "Aerospace & Defense"
+  },
+  "ORCL-D": {
+    "Sector": "Technology",
+    "Industry": "Software - Infrastructure"
+  },
+  "ALGM": {
+    "Sector": "Technology",
+    "Industry": "Semiconductors"
+  },
+  "DAR": {
+    "Sector": "Consumer Defensive",
+    "Industry": "Packaged Foods"
+  },
+  "BJRI": {
+    "Sector": "Consumer Cyclical",
+    "Industry": "Restaurants"
+  },
+  "APEI": {
+    "Sector": "Consumer Defensive",
+    "Industry": "Education & Training Services"
+  },
+  "HGV": {
+    "Sector": "Consumer Cyclical",
+    "Industry": "Resorts & Casinos"
+  },
+  "TRST": {
+    "Sector": "Financial Services",
+    "Industry": "Banks - Regional"
+  },
+  "TGTX": {
+    "Sector": "Healthcare",
+    "Industry": "Biotechnology"
   }
 }
