@@ -6034,5 +6034,9 @@
   "TGTX": {
     "Sector": "Healthcare",
     "Industry": "Biotechnology"
+  },
+  "POWI": {
+    "Sector": "Technology",
+    "Industry": "Semiconductors"
   }
 }
