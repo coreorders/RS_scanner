@@ -6038,5 +6038,37 @@
   "POWI": {
     "Sector": "Technology",
     "Industry": "Semiconductors"
+  },
+  "ELVR": {
+    "Sector": "Basic Materials",
+    "Industry": "Other Industrial Metals & Mining"
+  },
+  "AIFU": {
+    "Sector": "N/A",
+    "Industry": "N/A"
+  },
+  "MTDR": {
+    "Sector": "Energy",
+    "Industry": "Oil & Gas E&P"
+  },
+  "NCSM": {
+    "Sector": "Energy",
+    "Industry": "Oil & Gas Equipment & Services"
+  },
+  "JDZG": {
+    "Sector": "Consumer Defensive",
+    "Industry": "Education & Training Services"
+  },
+  "E": {
+    "Sector": "Energy",
+    "Industry": "Oil & Gas Integrated"
+  },
+  "UNFI": {
+    "Sector": "Consumer Defensive",
+    "Industry": "Food Distribution"
+  },
+  "ST": {
+    "Sector": "Technology",
+    "Industry": "Scientific & Technical Instruments"
   }
 }
