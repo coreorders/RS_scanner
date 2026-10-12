@@ -6266,5 +6266,65 @@
   "SLG": {
     "Sector": "Real Estate",
     "Industry": "REIT - Office"
+  },
+  "NFEGP": {
+    "Sector": "N/A",
+    "Industry": "N/A"
+  },
+  "SKHY": {
+    "Sector": "Technology",
+    "Industry": "Semiconductors"
+  },
+  "HONA": {
+    "Sector": "Industrials",
+    "Industry": "Aerospace & Defense"
+  },
+  "DD": {
+    "Sector": "Basic Materials",
+    "Industry": "Specialty Chemicals"
+  },
+  "KOD": {
+    "Sector": "Healthcare",
+    "Industry": "Biotechnology"
+  },
+  "ECHO": {
+    "Sector": "Communication Services",
+    "Industry": "Telecom Services"
+  },
+  "PBAM": {
+    "Sector": "Financial Services",
+    "Industry": "Banks - Regional"
+  },
+  "PBF": {
+    "Sector": "Energy",
+    "Industry": "Oil & Gas Refining & Marketing"
+  },
+  "TXG": {
+    "Sector": "Healthcare",
+    "Industry": "Medical Devices"
+  },
+  "IOND": {
+    "Sector": "Financial Services",
+    "Industry": "Capital Markets"
+  },
+  "RNG": {
+    "Sector": "Technology",
+    "Industry": "Software - Application"
+  },
+  "NTNX": {
+    "Sector": "N/A",
+    "Industry": "N/A"
+  },
+  "DK": {
+    "Sector": "N/A",
+    "Industry": "N/A"
+  },
+  "HPE": {
+    "Sector": "N/A",
+    "Industry": "N/A"
+  },
+  "VYLR": {
+    "Sector": "Financial Services",
+    "Industry": "Shell Companies"
   }
 }
